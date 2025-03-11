@@ -1034,9 +1034,8 @@ createBiomass_coreInputs <- function(sim) {
     rasterToMatchLarge <- sim$rasterToMatchLarge
     rasterToMatchLarge <- setValues(rasterToMatchLarge, seq(ncell(rasterToMatchLarge)))
 
-    opt <- options()
+    opt <- options("reproducible.gdalwarp" = FALSE) ## gdalwarp will reproject even if same CRS, duplicating indices
     on.exit(options(opt), add = TRUE)
-    options("reproducible.gdalwarp" = FALSE) #gdalwarp will reproject even if same CRS, duplicating indices
     rasterToMatchLargeCropped <- Cache(postProcess,
                                        x = rasterToMatchLarge,
                                        to = sim$rasterToMatch,
@@ -1045,7 +1044,6 @@ createBiomass_coreInputs <- function(sim) {
                                        userTags = c(cacheTags, "rasterToMatchLargeCropped"),
                                        omitArgs = c("userTags"))
     options(opt)
-    on.exit()
 
     rtmlc_int <- LandR::asInt(rasterToMatchLargeCropped)
     assertthat::assert_that(all(na.omit(as.vector(rasterToMatchLargeCropped - rtmlc_int)) == 0))
