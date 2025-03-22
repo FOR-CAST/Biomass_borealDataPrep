@@ -742,7 +742,7 @@ createBiomass_coreInputs <- function(sim) {
 
   sim$imputedPixID <- unique(c(sim$imputedPixID, newLCCClasses$pixelIndex))
   ## split pixelCohortData into 2 parts -- one with the former 34:36 pixels, one without
-  #    The one without 34:36 can be used for statistical estimation, but not the one with
+  ##   The one without 34:36 can be used for statistical estimation, but not the one with
   cohortData34to36 <- pixelCohortData[pixelIndex %in% newLCCClasses$pixelIndex]
   cohortData34to36 <- merge(newLCCClasses, cohortData34to36, all.x = TRUE,
                             all.y = FALSE, by = "pixelIndex")
@@ -821,7 +821,7 @@ createBiomass_coreInputs <- function(sim) {
     uniqueEcoregionGroups = .sortDotsUnderscoreFirst(as.character(unique(cohortDataShort$ecoregionGroup))),
     sumResponse = sum(cohortDataShort$coverPres, cohortDataShort$coverNum, na.rm = TRUE),
     .specialData = cds,
-    .cacheExtra = levels(cohortDataShort$speciesCode), # in case sppEquivCol changes
+    .cacheExtra = levels(cohortDataShort$speciesCode), ## in case sppEquivCol changes
     useCloud = useCloud,
     cloudFolderID = sim$cloudFolderID,
     # useCache = "overwrite",
@@ -887,12 +887,12 @@ createBiomass_coreInputs <- function(sim) {
     tryControl <- FALSE
     needRescaleModelB <- FALSE
     scaledVarsModelB <- NULL
-    for (tryBiomassModel in 1:3) { # try thrice -- default, then once to rescale, once to refit
+    for (tryBiomassModel in 1:3) { ## try thrice -- default, then once to rescale, once to refit
       modelBiomass <- Cache(
         statsModel,
         modelFn = modelFn,
         uniqueEcoregionGroups = ueg,
-        .cacheExtra = sumResponse, # only digest on this (formerly used sumResponse arg; now .cacheExtra is in Cache)
+        .cacheExtra = sumResponse, ## only digest on this
         .specialData = specDat,
         useCloud = useCloud,
         # useCache = "overwrite",
@@ -935,7 +935,7 @@ createBiomass_coreInputs <- function(sim) {
           tryControl <- TRUE
         }
         userTagsToClear <- c("statsModel", modelBiomassTags[1:3])
-        suppressMessages(clearCache(userTags = userTagsToClear, #after = timePriorToFit,
+        suppressMessages(clearCache(userTags = userTagsToClear, # after = timePriorToFit,
                                     ask = FALSE))
         specDat <- cohortDataNo34to36BiomassSubset2
         modelBiomassTags <- c("refit", "modelBiomass",
@@ -972,8 +972,9 @@ createBiomass_coreInputs <- function(sim) {
     message(blue(x))
   })
 
-  if (any(P(sim)$exportModels %in% c("all", "biomassModel")))
+  if (any(P(sim)$exportModels %in% c("all", "biomassModel"))) {
     sim$modelBiomass <- modelBiomass
+  }
 
   ## remove logB
   # cohortDataNo34to36BiomassSubset[, logB := NULL]
@@ -1034,7 +1035,7 @@ createBiomass_coreInputs <- function(sim) {
     rasterToMatchLarge <- sim$rasterToMatchLarge
     rasterToMatchLarge <- setValues(rasterToMatchLarge, seq(ncell(rasterToMatchLarge)))
 
-    opt <- options("reproducible.gdalwarp" = FALSE) ## gdalwarp will reproject even if same CRS, duplicating indices
+    opt <- options(reproducible.gdalwarp = FALSE) ## gdalwarp will reproject even if same CRS, duplicating indices
     on.exit(options(opt), add = TRUE)
     rasterToMatchLargeCropped <- Cache(postProcess,
                                        x = rasterToMatchLarge,
@@ -1325,7 +1326,7 @@ createBiomass_coreInputs <- function(sim) {
   message("Done Biomass_borealDataPrep: ", Sys.time())
   sim$pixelFateDT <- pixelFateDT
   out <- messageDF(pixelFateDT, 3, "blue")
-  #out <- lapply(capture.output(sim$pixelFateDT), function(x) message(blue(x)))
+  # out <- lapply(capture.output(sim$pixelFateDT), function(x) message(blue(x)))
 
   return(invisible(sim))
 }
@@ -1366,14 +1367,14 @@ Save <- function(sim) {
   dPath <- asPath(inputPath(sim), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
 
-  # 1. test if all input objects are already present (e.g., from inputs, objects or another module)
+  ## 1. test if all input objects are already present (e.g., from inputs, objects or another module)
   a <- depends(sim)
   whThisMod <- which(unlist(lapply(a@dependencies, function(x) x@name)) == "Biomass_borealDataPrep")
   objNames <- a@dependencies[[whThisMod]]@inputObjects$objectName
   objExists <- !unlist(lapply(objNames, function(x) is.null(sim[[x]])))
   names(objExists) <- objNames
 
-  # for backwards compatibility -- change from parameter to object
+  ## for backwards compatibility -- change from parameter to object
   if (!suppliedElsewhere("cloudFolderID", sim)) {
     if (!is.null(P(sim)$cloudFolderID))
       sim$cloudFolderID <- P(sim)$cloudFolderID
@@ -1459,28 +1460,27 @@ Save <- function(sim) {
     if (!is.null(sim$rawBiomassMap)) {
       if (!.compareCRS(sim$rawBiomassMap, sim$studyAreaLarge)) {
         ## note that extents may never align if the resolution and projection do not allow for it
-        # opt <- options("reproducible.useTerra" = TRUE) # Too many times this was failing with non-Terra # Eliot March 8, 2022
-        # on.exit(options(opt), add = TRUE)
         sim$rawBiomassMap <- Cache(postProcess,
                                    sim$rawBiomassMap,
                                    method = "bilinear",
                                    to = sim$studyAreaLarge,
                                    projectTo = NA,  ## don't project to SA
                                    overwrite = TRUE)
-        # options(opt)
       }
     }
   }
 
   if (needRTML || needRTM) {
-    RTMs <- prepRasterToMatch(studyArea = sim$studyArea,
-                              studyAreaLarge = sim$studyAreaLarge,
-                              rasterToMatch = if (needRTM) NULL else sim$rasterToMatch,
-                              rasterToMatchLarge = if (needRTML) NULL else sim$rasterToMatchLarge,
-                              destinationPath = dPath,
-                              templateRas = sim$rawBiomassMap,
-                              studyAreaName = P(sim)$.studyAreaName,
-                              cacheTags = cacheTags)
+    RTMs <- prepRasterToMatch(
+      studyArea = sim$studyArea,
+      studyAreaLarge = sim$studyAreaLarge,
+      rasterToMatch = if (needRTM) NULL else sim$rasterToMatch,
+      rasterToMatchLarge = if (needRTML) NULL else sim$rasterToMatchLarge,
+      destinationPath = dPath,
+      templateRas = sim$rawBiomassMap,
+      studyAreaName = P(sim)$.studyAreaName,
+      cacheTags = cacheTags
+    )
     sim$rasterToMatch <- RTMs$rasterToMatch
     sim$rasterToMatchLarge <- RTMs$rasterToMatchLarge
     rm(RTMs)
@@ -1501,39 +1501,41 @@ Save <- function(sim) {
 
   ## Land cover raster ------------------------------------------------
   if (!suppliedElsewhere("rstLCC", sim)) {
-    sim$rstLCC <- Cache(prepInputs_NTEMS_LCC_FAO,
-                        year = P(sim)$dataYear,
-                        maskTo = sim$studyAreaLarge,
-                        cropTo = sim$rasterToMatchLarge,
-                        projectTo = sim$rasterToMatchLarge,
-                        disturbedCode = 240,
-                        destinationPath = dPath,
-                        overwrite = TRUE,
-                        # writeTo = .suffix("rstLCC.tif", paste0("_", P(sim)$.studyAreaName, "_", P(sim)$dataYear)),
-                        userTags = c("rstLCC", currentModule(sim),
-                                     P(sim)$.studyAreaName, P(sim)$dataYear))
+    sim$rstLCC <- Cache(
+      prepInputs_NTEMS_LCC_FAO,
+      year = P(sim)$dataYear,
+      maskTo = sim$studyAreaLarge,
+      cropTo = sim$rasterToMatchLarge,
+      projectTo = sim$rasterToMatchLarge,
+      disturbedCode = 240,
+      destinationPath = dPath,
+      overwrite = TRUE,
+      # writeTo = .suffix("rstLCC.tif", paste0("_", P(sim)$.studyAreaName, "_", P(sim)$dataYear)),
+      userTags = c("rstLCC", currentModule(sim),
+                   P(sim)$.studyAreaName, P(sim)$dataYear)
+    )
   }
 
   ## Ecodistrict ------------------------------------------------
   if (!suppliedElsewhere("ecoregionLayer", sim)) {
     ## Ceres: makePixel table needs same no. pixels for this, RTM rawBiomassMap, LCC.. etc
-    sim$ecoregionLayer <- Cache(prepInputs(targetFile = "ecodistricts.shp",
-                                           archive = asPath("ecodistrict_shp.zip"),
-                                           url = extractURL("ecoregionLayer", sim),
-                                           alsoExtract = "similar",
-                                           destinationPath = dPath,
-                                           writeTo = NULL,
-                                           to = sim$studyAreaLarge,
-                                           fun = getOption("reproducible.shapefileRead"),
-                                           overwrite = TRUE),
-                                .functionName = "prepInputs_forEcoregionLayer",
-                                userTags = c("prepInputsEcoDistrict_SA", currentModule(sim), cacheTags))
+    sim$ecoregionLayer <- Cache(
+      prepInputs(targetFile = "ecodistricts.shp",
+                 archive = asPath("ecodistrict_shp.zip"),
+                 url = extractURL("ecoregionLayer", sim),
+                 alsoExtract = "similar",
+                 destinationPath = dPath,
+                 writeTo = NULL,
+                 to = sim$studyAreaLarge,
+                 fun = getOption("reproducible.shapefileRead"),
+                 overwrite = TRUE),
+      .functionName = "prepInputs_forEcoregionLayer",
+      userTags = c("prepInputsEcoDistrict_SA", currentModule(sim), cacheTags)
+    )
   }
 
   if (P(sim)$overrideAgeInFires) {
     if (!suppliedElsewhere("firePerimeters", sim)) {
-      # opt <- options("reproducible.useTerra" = TRUE) # Too many times this was failing with non-Terra # Eliot March 8, 2022
-      # on.exit(options(opt), add = TRUE)
       sa <- if (is(sim$studyAreaLarge, "sf")) {
         aggregate(sim$studyAreaLarge, list(rep(1, nrow(sim$studyAreaLarge))),
                   FUN = function(x) x)
@@ -1563,9 +1565,6 @@ Save <- function(sim) {
     } else {
       stop("'P(sim)$dataYear' must be 2001 OR 2011")
     }
-    ## Ceres Sep 3rd 2022 -- this option caused failure when previously set to FALSE at project level.
-    # opt <- options("reproducible.useTerra" = TRUE) # Too many times this was failing with non-Terra # Eliot March 8, 2022
-    # on.exit(options(opt), add = TRUE)
     sa <- if (is(sim$studyAreaLarge, "sf")) {
       aggregate(sim$studyAreaLarge, list(rep(1, nrow(sim$studyAreaLarge))),
                 FUN = function(x) x)
@@ -1573,23 +1572,24 @@ Save <- function(sim) {
       aggregate(sim$studyAreaLarge)
     }
     httr::with_config(config = httr::config(ssl_verifypeer = P(sim)$.sslVerify), {
-      sim$standAgeMap <- Cache(LandR::prepInputsStandAgeMap,
-                               ageFun = getOption("reproducible.rasterRead", "terra::rast"), # the backwards compatible default
-                               destinationPath = dPath,
-                               ageURL = ageURL,
-                               studyArea = sa,
-                               rasterToMatch = sim$rasterToMatchLarge,
-                               # writeTo = .suffix("standAgeMap.tif", paste0("_", P(sim)$.studyAreaName)),
-                               overwrite = TRUE,
-                               useCache = FALSE, ### for now due to attributes being lost on retrieval
-                               firePerimeters = if (P(sim)$overrideAgeInFires) sim$firePerimeters else NULL,
-                               fireURL = if (P(sim)$overrideAgeInFires) extractURL("firePerimeters") else NULL,
-                               startTime = start(sim),
-                               userTags = c("prepInputsStandAge_rtm", currentModule(sim), cacheTags),
-                               omitArgs = c("destinationPath", "targetFile", "overwrite",
-                                            "alsoExtract", "userTags"))
+      sim$standAgeMap <- Cache(
+        LandR::prepInputsStandAgeMap,
+        ageFun = getOption("reproducible.rasterRead", "terra::rast"), ## backwards compatible default
+        destinationPath = dPath,
+        ageURL = ageURL,
+        studyArea = sa,
+        rasterToMatch = sim$rasterToMatchLarge,
+        # writeTo = .suffix("standAgeMap.tif", paste0("_", P(sim)$.studyAreaName)),
+        overwrite = TRUE,
+        useCache = FALSE, ## TODO: temporary FALSE due to attributes being lost on retrieval
+        firePerimeters = if (P(sim)$overrideAgeInFires) sim$firePerimeters else NULL,
+        fireURL = if (P(sim)$overrideAgeInFires) extractURL("firePerimeters") else NULL,
+        startTime = start(sim),
+        userTags = c("prepInputsStandAge_rtm", currentModule(sim), cacheTags),
+        omitArgs = c("destinationPath", "targetFile", "overwrite",
+                     "alsoExtract", "userTags")
+      )
     })
-    # options(opt)
   }
 
   LandR::assertStandAgeMapAttr(sim$standAgeMap)
@@ -1621,12 +1621,9 @@ Save <- function(sim) {
 
   ## Species raster layers -------------------------------------------
   if (!suppliedElsewhere("speciesLayers", sim)) {
-    #opt <- options(reproducible.useCache = "overwrite")
-    # opt <- options("reproducible.useTerra" = TRUE) # Too many times this was failing with non-Terra # Eliot March 8, 2022
-    # on.exit(options(opt), add = TRUE)
     httr::with_config(config = httr::config(ssl_verifypeer = P(sim)$.sslVerify), {
       sim$speciesLayers <- Cache(prepSpeciesLayers_KNN,
-                                 destinationPath = dPath, # this is generic files (preProcess)
+                                 destinationPath = dPath,
                                  outputPath = dPath,
                                  studyArea = sim$studyAreaLarge,
                                  studyAreaName = P(sim)$.studyAreaName,
@@ -1638,14 +1635,13 @@ Save <- function(sim) {
                                  userTags = c(cacheTags, "speciesLayers"),
                                  omitArgs = c("userTags"))
     })
-    # options(opt)
 
     ## make sure empty pixels inside study area have 0 cover, instead of NAs.
     ## this can happen when data has NAs instead of 0s and is not merged/overlayed (e.g. CASFRI)
     sim$speciesLayers <- NAcover2zero(sim$speciesLayers, sim$rasterToMatchLarge)
   }
 
-  # 3. species maps
+  ## 3. species maps
   if (!suppliedElsewhere("speciesTable", sim)) {
     sim$speciesTable <- getSpeciesTable(dPath = dPath, cacheTags = c(cacheTags, "speciesTable"))
   }
