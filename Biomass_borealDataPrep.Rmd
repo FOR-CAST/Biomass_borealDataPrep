@@ -245,7 +245,7 @@ prepares all inputs and estimates parameters in pixels within forested
 land-cover classes (see [Defining simulation pixels and
 ecolocations](#bboreal-forestedPix-ecolocations)).
 
-If a `studyAreaLarge` is supplied, the module uses it for parameter estimation
+If a `studyArea_biomassParam` is supplied, the module uses it for parameter estimation
 to account for larger spatial variability.
 
 In the next sections, we describe in greater detail the various data processing
@@ -254,17 +254,17 @@ and parameter estimation steps carried out by *Biomass_borealDataPrep*.
 ### Data acquisition and treatment {#bboreal-dataprep}
 
 The only two objects that the user must supply are shapefiles that define the
-study area used to derive parameters (`studyAreaLarge`) and the study area where
+study area used to derive parameters (`studyArea_biomassParam`) and the study area where
 the simulation will happen (`studyArea`). The two objects can be identical if
 the user chooses to parametrise and run the simulations in the same area. If not
-identical, `studyArea` must be fully within `studyAreaLarge`. If
-`studyAreaLarge` and `studyArea` are in Canada, the module can automatically
+identical, `studyArea` must be fully within `studyArea_biomassParam`. If
+`studyArea_biomassParam` and `studyArea` are in Canada, the module can automatically
 estimate and prepare all input parameters and objects for *Biomass_core*, as the
 default raw data are FAIR data [*sensu* @WilkinsonEtAl2016] at the
 national-scale.
 
 If no other inputs are supplied, *Biomass_borealDataPrep* will create raster
-layer versions `studyAreaLarge` and `studyArea` (`rasterToMatchLarge` and
+layer versions `studyArea_biomassParam` and `studyArea` (`rasterToMatch_biomassParam` and
 `rasterToMatch`, respectively), using the stand biomass map layer
 (`rawBiomassMap`) as a template (i.e., the source of information for spatial
 resolution).
@@ -307,8 +307,8 @@ automatically obtained and pre-processed by *Biomass_borealDataPrep*. The module
 ensures that:
 
 1.  all data have the same geospatial properties (extent, resolution);
-2.  all layers these are correctly re-projected to `studyAreaLarge` and
-    `rasterToMatchLarge`;
+2.  all layers these are correctly re-projected to `studyArea_biomassParam` and
+    `rasterToMatch_biomassParam`;
 3.  species with no cover values above 10(ref:percent) are excluded.
 
 By default it uses species (ref:percent) cover rasters derived from the MODIS
@@ -472,7 +472,7 @@ df_params[df_params$paramName == "coverPctToBiomassPctModel", "default"]
 which relates the estimated biomass (`B`) with an interaction term between
 log-age (`logAge`), `standB` ('totalBiomass'), `speciesCode` (i.e. species ID)
 and land cover ('lcc'). The model is fitted to the `standB` and species cover on
-`studyAreaLarge`, using an optimization routine that searches for the best
+`studyArea_biomassParam`, using an optimization routine that searches for the best
 conversion factor between broadleaf species cover and `B` by minimizing AIC.
 
 #### Maximum biomass and maximum aboveground net primary productivity {#bboreal-maxB-maxANPP}
@@ -757,7 +757,7 @@ expects.
 
 The only inputs that **must** be provided (i.e., *Biomass_borealDataPrep* does
 not have a default for) are `studyArea` (the study area used to simulate forest
-dynamics *Biomass_core*) and `studyAreaLarge` (a potentially larger study area
+dynamics *Biomass_core*) and `studyArea_biomassParam` (a potentially larger study area
 used to derive parameter values -- e.g., species traits).
 
 All other input objects and parameters have internal defaults.
@@ -784,7 +784,7 @@ attention:
     determining where the simulation will take place. This input object **must
     be supplied by the user**.
 
--   `studyAreaLarge` -- shapefile. A `SpatialPolygonsDataFrame` with a single
+-   `studyArea_biomassParam` -- shapefile. A `SpatialPolygonsDataFrame` with a single
     polygon determining the where the statistical models for parameter
     estimation will be fitted. It **must** contain `studyArea` fully, if they
     are not identical. This object **must be supplied by the user**.
@@ -868,7 +868,7 @@ Of these parameters, the following are particularly important:
     `fitDeciduousCoverDiscount` -- the first is the adjustment factor for
     broadleaf species cover to biomass relationships; the second and third are
 the model used to refit `deciduousCoverDiscount` in the supplied
-`studyAreaLarge` and whether refitting should be attempted (respectively).
+`studyArea_biomassParam` and whether refitting should be attempted (respectively).
 
 \newpage
 \blandscape

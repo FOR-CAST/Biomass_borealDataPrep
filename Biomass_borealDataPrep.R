@@ -202,7 +202,7 @@ defineModule(sim, list(
                  desc = paste("A `sf` polygon object that characterizes the unique ecological regions (`ecoregionGroup`) used to",
                               "parameterize the biomass, cover, and species establishment probability models.",
                               "It will be overlaid with landcover to generate classes for every ecoregion/LCC combination.",
-                              "It must have same extent and crs as `studyAreaLarge`.",
+                              "It must have same extent and crs as `studyArea_biomassParam`.",
                               "It is superseded by `sim$ecoregionRst` if that object is supplied by the user"),
                  sourceURL = "https://sis.agr.gc.ca/cansis/nsdb/ecostrat/district/ecodistrict_shp.zip"),
     expectsInput("ecoregionRst", "SpatRaster",
@@ -210,7 +210,7 @@ defineModule(sim, list(
                               "parameterize the biomass, cover, and species establishment probability models.",
                               "If this object is provided, it will supercede `sim$ecoregionLayer`.",
                               "It will be overlaid with landcover to generate classes for every ecoregion/LCC combination.",
-                              "It must have same extent and crs as `rasterToMatchLarge` if supplied by user - use `reproducible::postProcess`.",
+                              "It must have same extent and crs as `rasterToMatch_biomassParam` if supplied by user - use `reproducible::postProcess`.",
                               "If it uses an attribute table, it must contain the field 'ecoregion' to represent raster values")),
     expectsInput("firePerimeters", "SpatRaster",
                  desc = paste("Fire perimeters raster, with fire year information used to 'update' stand",
@@ -239,14 +239,14 @@ defineModule(sim, list(
                               "    the nearest non-transient class, probabilistically if there is more than 1 nearest\n",
                               "    neighbour class, based on `P(sim)$LCCClassesToReplaceNN`.\n",
                               "The default layer used, if not supplied, is Canada national land classification in 2010.",
-                              " The metadata (res, proj, ext, origin) need to match `rasterToMatchLarge`."),
+                              " The metadata (res, proj, ext, origin) need to match `rasterToMatch_biomassParam`."),
                  sourceURL = NA), ## uses P(sim)$rstLCCYear and LandR::prepInputsLCC() defaults
     expectsInput("rasterToMatch", "SpatRaster",
                  desc = paste("A raster of the `studyArea` in the same resolution and projection as `rawBiomassMap`.",
                               "This is the scale used for all *outputs* for use in the simulation.",
                               "If not supplied will be forced to match the *default* `rawBiomassMap`.")),
-    expectsInput("rasterToMatchLarge", "SpatRaster",
-                 desc = paste("A raster of the `studyAreaLarge` in the same resolution and projection as `rawBiomassMap`.",
+    expectsInput("rasterToMatch_biomassParam", "SpatRaster",
+                 desc = paste("A raster of the `studyArea_biomassParam` in the same resolution and projection as `rawBiomassMap`.",
                               "This is the scale used for all *inputs* for use in the simulation.",
                               "If not supplied will be forced to match the *default* `rawBiomassMap`.")),
     expectsInput("rawBiomassMap", "SpatRaster",
@@ -296,15 +296,14 @@ defineModule(sim, list(
                                     "canada-forests-attributes_attributs-forests-canada/",
                                     "2001-attributes_attributs-2001/",
                                     "NFI_MODIS250m_2001_kNN_Structure_Stand_Age_v1.tif")),
-    expectsInput("studyArea", "sfc",
-                 desc = paste("Polygon to use as the study area. Must be supplied by the user. Can also be a SpatVector.")),
-    expectsInput("studyAreaLarge", "sfc",
-                 desc = paste("multipolygon (potentially larger than `studyArea`) used for parameter estimation,",
-                              "Must be supplied by the user. If larger than `studyArea`, it must fully contain it.",
-                              "Can also be a SpatVector."))
+    expectsInput("studyArea", "SpatVector",
+                 desc = paste("Polygon to use as the study area")),
+    expectsInput("studyArea_biomassParam", "SpatVector",
+                 desc = paste("optional larger polygon used for parameter estimation.",
+                              "If larger than `studyArea`, it must fully contain it."))
   ),
-  outputObjects = bindrows(
-    createsOutput("biomassMap", "SpatRaster",
+    outputObjects = bindrows(
+      createsOutput("biomassMap", "SpatRaster",
                   paste("total biomass raster layer in study area,",
                         "filtered for pixels covered by cohortData. Units in $g/m^2$")),
     createsOutput("cohortData", "data.table",
@@ -316,7 +315,7 @@ defineModule(sim, list(
     createsOutput("ecoregionMap", "SpatRaster",
                   paste("`ecoregionGroup` map that has mapcodes match `ecoregion` table and `speciesEcoregion` table")),
     createsOutput("firePerimeters", "SpatRaster",
-                  paste("As the input object `firePerimeters`, but potentially cropped/masked/projected to match `rasterToMatchLarge`")),
+                  paste("As the input object `firePerimeters`, but potentially cropped/masked/projected to match `rasterToMatch_biomassParam`")),
     createsOutput("imputedPixID", "integer",
                   paste("A vector of pixel IDs - matching rasterMatch IDs - that suffered data imputation.",
                         "Data imputation may be in age (to match last fire event post 1950s, or 0 cover),",
@@ -344,7 +343,7 @@ defineModule(sim, list(
     #                     "for metadata")),
     createsOutput("rstLCC", "SpatRaster",
                   paste("As the input object `rstLCC`, but potentially cropped/projected/masked",
-                        "to match `rasterToMatchLarge`")),
+                        "to match `rasterToMatch_biomassParam`")),
     createsOutput("species", "data.table",
                   paste("Table that of invariant species traits.",
                         "Will have the same traits as the input `speciesTable`,",
@@ -360,11 +359,11 @@ defineModule(sim, list(
                         "defined by species and `ecoregionGroup` (i.e. ecolocation)")),
     createsOutput("standAgeMap", "SpatRaster",
                   paste("As the input object `standAgeMap`, but potentially cropped, projected,",
-                        "masked to match `rasterToMatchLarge`.")),
+                        "masked to match `rasterToMatch_biomassParam`.")),
     createsOutput("studyArea", "sfc",
                   paste("As the input object `studyArea`, but potentially projected to match `rasterToMatch` CRS.")),
-    createsOutput("studyAreaLarge", "sfc",
-                  paste("As the input object `studyAreaLarge`, but potentially projected to match `studyArea`",
+    createsOutput("studyArea_biomassParam", "sfc",
+                  paste("As the input object `studyArea_biomassParam`, but potentially projected to match `studyArea`",
                         "and `rasterToMatch` CRS.")),
     createsOutput("sufficientLight", "data.frame",
                   paste("Probability of germination for species shade tolerance (in `species`)",
@@ -439,42 +438,42 @@ createBiomass_coreInputs <- function(sim) {
   # Now it fails with terra: Ceres Jul 08 2022
   # opt <- options("reproducible.useTerra" = FALSE)
   # on.exit(options(opt), add = TRUE)
-  if (!.compareRas(sim$standAgeMap, sim$rasterToMatchLarge, res = TRUE)) {
+  if (!.compareRas(sim$standAgeMap, sim$rasterToMatch_biomassParam, res = TRUE)) {
     ## note that extents may never align if the resolution and projection do not allow for it
     ## this is not working, need to use projectRaster
     sim$standAgeMap <- Cache(postProcess,
                              sim$standAgeMap,
-                             to = sim$rasterToMatchLarge,
+                             to = sim$rasterToMatch_biomassParam,
                              overwrite = TRUE)
     attr(sim$standAgeMap, "imputedPixID") <- sim$imputedPixID
   }
 
-  if (!.compareRas(sim$rstLCC, sim$rasterToMatchLarge, res = TRUE)) {
+  if (!.compareRas(sim$rstLCC, sim$rasterToMatch_biomassParam, res = TRUE)) {
     sim$rstLCC <- Cache(postProcess,
                         sim$rstLCC,
-                        to = sim$rasterToMatchLarge,
+                        to = sim$rasterToMatch_biomassParam,
                         overwrite = TRUE)
   }
 
   if (P(sim)$overrideAgeInFires) {
-    if (!.compareRas(sim$firePerimeters, sim$rasterToMatchLarge, res = TRUE, stopOnError = FALSE)) {
+    if (!.compareRas(sim$firePerimeters, sim$rasterToMatch_biomassParam, res = TRUE, stopOnError = FALSE)) {
       sim$firePerimeters <- Cache(postProcess,
                                   sim$firePerimeters,
-                                  to = sim$rasterToMatchLarge,
+                                  to = sim$rasterToMatch_biomassParam,
                                   overwrite = TRUE)
     }
   }
   # options(opt)
-  if (!.compareRas(sim$speciesLayers, sim$rasterToMatchLarge, res = TRUE)) {
+  if (!.compareRas(sim$speciesLayers, sim$rasterToMatch_biomassParam, res = TRUE)) {
     sim$speciesLayers <- Cache(postProcessTerra,
                                sim$speciesLayers,
-                               to = sim$rasterToMatchLarge,
+                               to = sim$rasterToMatch_biomassParam,
                                overwrite = TRUE)
   }
 
-  if (!.compareRas(sim$rasterToMatchLarge, sim$rawBiomassMap, sim$rstLCC,
+  if (!.compareRas(sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC,
                    sim$speciesLayers, sim$standAgeMap, res = TRUE)) {
-    stop("sim$rasterToMatchLarge, sim$rawBiomassMap, sim$rstLCC,
+    stop("sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC,
                    sim$speciesLayers, sim$standAgeMap properties do not match")
   }
 
@@ -556,11 +555,11 @@ createBiomass_coreInputs <- function(sim) {
     sim$studyArea <- fixErrors(sim$studyArea)
   }
 
-  if (!.compareCRS(sim$studyAreaLarge, sim$rasterToMatchLarge)) {
-    warning(paste0("studyAreaLarge and rasterToMatchLarge projections differ.\n",
-                   "studyAreaLarge will be projected to match rasterToMatchLarge"))
-    sim$studyAreaLarge <- projectTo(sim$studyAreaLarge, crs(sim$rasterToMatchLarge))
-    sim$studyAreaLarge <- fixErrors(sim$studyAreaLarge)
+  if (!.compareCRS(sim$studyArea_biomassParam, sim$rasterToMatch_biomassParam)) {
+    warning(paste0("studyArea_biomassParam and rasterToMatch_biomassParam projections differ.\n",
+                   "studyArea_biomassParam will be projected to match rasterToMatch_biomassParam"))
+    sim$studyArea_biomassParam <- projectTo(sim$studyArea_biomassParam, crs(sim$rasterToMatch_biomassParam))
+    sim$studyArea_biomassParam <- fixErrors(sim$studyArea_biomassParam)
   }
 
   ## Clean pixels for veg. succession model
@@ -585,7 +584,7 @@ createBiomass_coreInputs <- function(sim) {
     ecoregionRst = sim$ecoregionRst,
     ecoregionLayer = sim$ecoregionLayer,
     ecoregionLayerField = P(sim)$ecoregionLayerField,
-    rasterToMatchLarge = sim$rasterToMatchLarge,
+    rasterToMatch_biomassParam = sim$rasterToMatch_biomassParam,
     rstLCCAdj = rstLCCAdj,
     pixelsToRm = pixelsToRm,
     cacheTags = c(cacheTags, "prepEcoregionFiles")
@@ -604,7 +603,7 @@ createBiomass_coreInputs <- function(sim) {
     standAgeMap = sim$standAgeMap,
     ecoregionFiles = ecoregionFiles,
     biomassMap = sim$rawBiomassMap,
-    rasterToMatch = sim$rasterToMatchLarge,
+    rasterToMatch = sim$rasterToMatch_biomassParam,
     rstLCC = rstLCCAdj
   ) |>
     Cache(userTags = c(cacheTags, "pixelTable"), omitArgs = c("userTags"))
@@ -1016,7 +1015,7 @@ createBiomass_coreInputs <- function(sim) {
   #   quickPlot::dev(curDev)
   # }
 
-  if (ncell(sim$rasterToMatchLarge) > 3e7) replicate(3, gc())
+  if (ncell(sim$rasterToMatch_biomassParam) > 3e7) replicate(3, gc())
 
   ## Create initial communities, i.e., pixelGroups -----------------------
   ## Rejoin back the pixels that were 34:36
@@ -1024,46 +1023,46 @@ createBiomass_coreInputs <- function(sim) {
   pixelCohortData <- rbindlist(list(cohortData34to36, cohortDataNo34to36),
                                use.names = TRUE, fill = TRUE)
 
-  ## "Downsize" to studyArea after estimating parameters on studyAreaLarge --------------
-  ## 1. Subset pixels (IDs) on rasterToMatchLarge, using rasterToMatch
+  ## "Downsize" to studyArea after estimating parameters on studyArea_biomassParam --------------
+  ## 1. Subset pixels (IDs) on rasterToMatch_biomassParam, using rasterToMatch
   ## 2. Subset data.tables using the pixel IDs / ecoregion/species combinations
   ##    that are common across the two rasters
   ## 3. Re-do pixel ID numbering so that it matches the final rasterToMatch
   ## Note: if SA and SALarge are the same, no subsetting will take place.
-  if (sum(is.na(as.vector(values(sim$rasterToMatch)))) != sum(is.na(as.vector(values(sim$rasterToMatchLarge))))) {
+  if (sum(is.na(as.vector(values(sim$rasterToMatch)))) != sum(is.na(as.vector(values(sim$rasterToMatch_biomassParam))))) {
     message(blue("Subsetting to studyArea"))
-    rasterToMatchLarge <- sim$rasterToMatchLarge
-    rasterToMatchLarge <- setValues(rasterToMatchLarge, seq(ncell(rasterToMatchLarge)))
+    rasterToMatch_biomassParam <- sim$rasterToMatch_biomassParam
+    rasterToMatch_biomassParam <- setValues(rasterToMatch_biomassParam, seq(ncell(rasterToMatch_biomassParam)))
 
     opt <- options(reproducible.gdalwarp = FALSE) ## gdalwarp will reproject even if same CRS, duplicating indices
     on.exit(options(opt), add = TRUE)
-    rasterToMatchLargeCropped <- Cache(postProcess,
-                                       x = rasterToMatchLarge,
+    rasterToMatch_biomassParamCropped <- Cache(postProcess,
+                                       x = rasterToMatch_biomassParam,
                                        to = sim$rasterToMatch,
-                                       datatype = assessDataType(rasterToMatchLarge),
+                                       datatype = assessDataType(rasterToMatch_biomassParam),
                                        method = "near",
-                                       userTags = c(cacheTags, "rasterToMatchLargeCropped"),
+                                       userTags = c(cacheTags, "rasterToMatch_biomassParamCropped"),
                                        omitArgs = c("userTags"))
     options(opt)
 
-    rtmlc_int <- LandR::asInt(rasterToMatchLargeCropped)
-    assertthat::assert_that(all(na.omit(as.vector(rasterToMatchLargeCropped - rtmlc_int)) == 0))
+    rtmlc_int <- LandR::asInt(rasterToMatch_biomassParamCropped)
+    assertthat::assert_that(all(na.omit(as.vector(rasterToMatch_biomassParamCropped - rtmlc_int)) == 0))
     rm(rtmlc_int)
-    assertthat::assert_that(sum(is.na(as.vector(rasterToMatchLargeCropped))) < ncell(rasterToMatchLargeCropped))
+    assertthat::assert_that(sum(is.na(as.vector(rasterToMatch_biomassParamCropped))) < ncell(rasterToMatch_biomassParamCropped))
     ## i.e., not all NA
 
-    if (!.compareRas(rasterToMatchLargeCropped, sim$rasterToMatch)) {
+    if (!.compareRas(rasterToMatch_biomassParamCropped, sim$rasterToMatch)) {
       stop("Downsizing to rasterToMatch after estimating parameters didn't work.",
            "Please debug Biomass_borealDataPrep::createBiomass_coreInputs().")
     }
 
     ## subset pixels that are in studyArea/rasterToMatch only
-    pixToKeep <- na.omit(as.vector(values(rasterToMatchLargeCropped))) # these are the old indices of RTML
+    pixToKeep <- na.omit(as.vector(values(rasterToMatch_biomassParamCropped))) # these are the old indices of RTML
     pixelCohortData <- pixelCohortData[pixelIndex %in% pixToKeep]
 
     ## re-do pixelIndex (it now needs to match rasterToMatch)
-    newPixelIndexDT <- data.table(pixelIndex = as.vector(values(rasterToMatchLargeCropped)),
-                                  newPixelIndex = as.integer(1:ncell(rasterToMatchLargeCropped))) |>
+    newPixelIndexDT <- data.table(pixelIndex = as.vector(values(rasterToMatch_biomassParamCropped)),
+                                  newPixelIndex = as.integer(1:ncell(rasterToMatch_biomassParamCropped))) |>
       na.omit()
 
     pixelCohortData <- newPixelIndexDT[pixelCohortData, on = "pixelIndex"]
@@ -1075,7 +1074,7 @@ createBiomass_coreInputs <- function(sim) {
     ## now convert imputedPixID to RTM
     sim$imputedPixID <- newPixelIndexDT[pixelIndex %in% sim$imputedPixID, newPixelIndex]
 
-    rm(pixToKeep, rasterToMatchLargeCropped, newPixelIndexDT)
+    rm(pixToKeep, rasterToMatch_biomassParamCropped, newPixelIndexDT)
     if (ncell(sim$rasterToMatch) > 3e7) replicate(3, gc())
   }
   ## subset ecoregionFiles$ecoregionMap to smaller area.
@@ -1366,14 +1365,14 @@ Save <- function(sim) {
   cacheTags <- c(currentModule(sim), "otherFunctions:.inputObjects")
   dPath <- asPath(inputPath(sim), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
-
+  
   ## 1. test if all input objects are already present (e.g., from inputs, objects or another module)
   a <- depends(sim)
   whThisMod <- which(unlist(lapply(a@dependencies, function(x) x@name)) == "Biomass_borealDataPrep")
   objNames <- a@dependencies[[whThisMod]]@inputObjects$objectName
   objExists <- !unlist(lapply(objNames, function(x) is.null(sim[[x]])))
   names(objExists) <- objNames
-
+  
   ## for backwards compatibility -- change from parameter to object
   if (!suppliedElsewhere("cloudFolderID", sim)) {
     if (!is.null(P(sim)$cloudFolderID))
@@ -1381,64 +1380,60 @@ Save <- function(sim) {
   }
   ## Study area(s) ------------------------------------------------
   if (!suppliedElsewhere("studyArea", sim)) {
-    stop("Please provide a 'studyArea' polygon")
-    # message("'studyArea' was not provided by user. Using a polygon (6250000 m^2) in southwestern Alberta, Canada")
-    # sim$studyArea <- randomStudyArea(seed = 1234, size = (250^2)*100)  # Jan 2021 we agreed to force user to provide a SA/SAL
+    sim$studyArea <- randomStudyArea(seed = 1234, size = (250^2)*100)  # Jan 2021 we agreed to force user to provide a SA/SAL
   }
-
-  if (!suppliedElsewhere("studyAreaLarge", sim)) {
-    stop("Please provide a 'studyAreaLarge' polygon.
-         If parameterisation is to be done on the same area as 'studyArea'
-         provide the same polygon to 'studyAreaLarge'")
-    # message("'studyAreaLarge' was not provided by user. Using the same as 'studyArea'")
-    # sim <- objectSynonyms(sim, list(c("studyAreaLarge", "studyArea"))) # Jan 2021 we agreed to force user to provide a SA/SAL
+  
+  if (!suppliedElsewhere("studyArea_biomassParam", sim)) {
+    if (!is.null(sim$studyAreaLarge)) {
+      sim$studyArea_biomassParam <- sim$studyArea
+    } else {
+      warning("please replace studyAreaLarge with studyArea_biomassParam")
+      sim$studyArea_biomassParam <- sim$studyAreaLarge
+    }
   }
-
-  if (!.compareCRS(sim$studyArea, sim$studyAreaLarge)) {
-    warning("studyArea and studyAreaLarge have different projections.\n
-            studyAreaLarge will be projected to match crs(studyArea)")
-    sim$studyAreaLarge <- projectTo(sim$studyAreaLarge, crs(sim$studyArea))
-  }
-
+  
   if (is.na(P(sim)$.studyAreaName)) {
-    params(sim)[[currentModule(sim)]][[".studyAreaName"]] <- reproducible::studyAreaName(sim$studyAreaLarge)
-    message("The .studyAreaName is not supplied; derived name from sim$studyAreaLarge: ",
+    params(sim)[[currentModule(sim)]][[".studyAreaName"]] <- reproducible::studyAreaName(sim$studyArea_biomassParam)
+    message("The .studyAreaName is not supplied; derived name from sim$studyArea_biomassParam: ",
             params(sim)[[currentModule(sim)]][[".studyAreaName"]])
   }
-
-  ## check whether SA is within SALarge
-  ## convert to temp sf objects
-  studyArea <- st_as_sf(sim$studyArea)
-  studyAreaLarge <- st_as_sf(sim$studyAreaLarge)
-
-  ## this is necessary if studyArea and studyAreaLarge are multipolygon objects
+  
+  studyArea <- sf::st_as_sf(studyArea)
+  studyArea_biomassParam <- sf::st_as_sf(studyArea_biomassParam)
+  
+  ## this is necessary if studyArea and studyArea_biomassParam are multipolygon objects
   if (nrow(studyArea) > 1) {
-    studyArea <- st_buffer(studyArea, 0) |> st_union()
+    stop("please provide a study area that is not a multipolygon", 
+         "which will incorrectly segment ecoregions. Try `terra::aggregate`")
   }
-
-  if (nrow(studyAreaLarge) > 1) {
-    studyAreaLarge <- st_buffer(studyAreaLarge, 0) |> st_union()
-  }
-
-  if (length(st_within(studyArea, studyAreaLarge))[[1]] == 0) {
-    stop("studyArea is not fully within studyAreaLarge.
+  
+  if (length(st_within(studyArea, studyArea_biomassParam))[[1]] == 0) {
+    stop("studyArea is not fully within studyArea_biomassParam.
          Please check the aligment, projection and shapes of these polygons")
   }
-  rm(studyArea, studyAreaLarge)
-
-  ## Raster(s) to match ------------------------------------------------
-  needRTML <- needRTM <- FALSE
-  if (is.null(sim$rasterToMatch) || is.null(sim$rasterToMatchLarge)) {
-    if (!suppliedElsewhere("rasterToMatch", sim)) {
-      needRTM <- TRUE
-      message("There is no rasterToMatch supplied; will attempt to use rawBiomassMap")
+  rm(studyArea, studyArea_biomassParam)
+  
+  if (!suppliedElsewhere("rasterToMatch", sim)) {
+    if (terra::is.lonlat(sim$studyArea)) {
+      targetRes <- c(0.00333, 0.00333)
+    } else {
+      targetRes <- c(250, 250)
     }
-    if (!suppliedElsewhere("rasterToMatchLarge", sim)) { ## Eliot changed this -- case where RTM was supplied, this broke that --> NOT TRUE --> if one is not provided, redo both (safer?)
-      needRTML <- TRUE
-      message("There is no rasterToMatchLarge supplied; will use rasterToMatch")
+    sim$rasterToMatch <- rast(sim$studyArea, 
+                              res = targetRes, vals = 1) |>
+      mask(mask = sim$studyArea)
+  }
+  
+  if (!suppliedElsewhere("rasterToMatch_biomassParam", sim)) { 
+    if (!is.null(sim$rasterToMatchLarge)) {
+      warning("please use rasterToMatch_biomassParam in place of rasterToMatchLarge")
+      sim$rasterToMatch_biomassParam <- sim$rasterToMatchLarge
+    } else {
+      sim$rasterToMatch_biomassParam <- sim$rasterToMatch
     }
   }
-
+  
+  
   ## biomass map
   if (!suppliedElsewhere("rawBiomassMap", sim)) {
     if (P(sim)$dataYear %in% c(2001, 2011)) {
@@ -1446,76 +1441,32 @@ Save <- function(sim) {
     } else {
       stop("'P(sim)$dataYear' must be one of 2001 or 2011")
     }
-
+    
     sim$rawBiomassMap <- prepRawBiomassMap(
       url = biomassURL,
       studyAreaName = P(sim)$.studyAreaName,
       cacheTags = cacheTags,
-      to = if (!needRTML) sim$rasterToMatchLarge else if (!needRTM) sim$rasterToMatch else sim$studyAreaLarge,
-      projectTo = if (!needRTML) sim$rasterToMatchLarge else if (!needRTM) sim$rasterToMatch else NA, ## don't project to SA if RTMs not present
+      to =  sim$rasterToMatch_biomassParam, 
       destinationPath = dPath)
   }
-
-  if (needRTML || needRTM) {
-    if (!is.null(sim$rawBiomassMap)) {
-      if (!.compareCRS(sim$rawBiomassMap, sim$studyAreaLarge)) {
-        ## note that extents may never align if the resolution and projection do not allow for it
-        sim$rawBiomassMap <- Cache(postProcess,
-                                   sim$rawBiomassMap,
-                                   method = "bilinear",
-                                   to = sim$studyAreaLarge,
-                                   projectTo = NA,  ## don't project to SA
-                                   overwrite = TRUE)
-      }
-    }
-  }
-
-  if (needRTML || needRTM) {
-    RTMs <- prepRasterToMatch(
-      studyArea = sim$studyArea,
-      studyAreaLarge = sim$studyAreaLarge,
-      rasterToMatch = if (needRTM) NULL else sim$rasterToMatch,
-      rasterToMatchLarge = if (needRTML) NULL else sim$rasterToMatchLarge,
-      destinationPath = dPath,
-      templateRas = sim$rawBiomassMap,
-      studyAreaName = P(sim)$.studyAreaName,
-      cacheTags = cacheTags
-    )
-    sim$rasterToMatch <- RTMs$rasterToMatch
-    sim$rasterToMatchLarge <- RTMs$rasterToMatchLarge
-    rm(RTMs)
-  }
-
-  if (!.compareCRS(sim$studyArea, sim$rasterToMatch)) {
-    warning(paste0("studyArea and rasterToMatch projections differ.\n",
-                   "studyArea will be projected to match rasterToMatch"))
-    sim$studyArea <- projectInputs(sim$studyArea, crs(sim$rasterToMatch))
-    sim$studyArea <- fixErrors(sim$studyArea)
-  }
-  if (!.compareCRS(sim$studyAreaLarge, sim$rasterToMatchLarge)) {
-    warning(paste0("studyAreaLarge and rasterToMatchLarge projections differ.\n",
-                   "studyAreaLarge will be projected to match rasterToMatchLarge"))
-    sim$studyAreaLarge <- projectInputs(sim$studyAreaLarge, crs(sim$rasterToMatchLarge))
-    sim$studyAreaLarge <- fixErrors(sim$studyAreaLarge)
-  }
-
+  
   ## Land cover raster ------------------------------------------------
   if (!suppliedElsewhere("rstLCC", sim)) {
     sim$rstLCC <- Cache(
       prepInputs_NTEMS_LCC_FAO,
       year = P(sim)$dataYear,
-      maskTo = sim$studyAreaLarge,
-      cropTo = sim$rasterToMatchLarge,
-      projectTo = sim$rasterToMatchLarge,
+      maskTo = sim$studyArea_biomassParam,
+      cropTo = sim$rasterToMatch_biomassParam,
+      projectTo = sim$rasterToMatch_biomassParam,
       disturbedCode = 240,
       destinationPath = dPath,
       overwrite = TRUE,
-      # writeTo = .suffix("rstLCC.tif", paste0("_", P(sim)$.studyAreaName, "_", P(sim)$dataYear)),
+      writeTo = .suffix("rstLCC.tif", paste0("_", P(sim)$.studyAreaName, "_", P(sim)$dataYear)),
       userTags = c("rstLCC", currentModule(sim),
                    P(sim)$.studyAreaName, P(sim)$dataYear)
     )
   }
-
+  
   ## Ecodistrict ------------------------------------------------
   if (!suppliedElsewhere("ecoregionLayer", sim)) {
     ## Ceres: makePixel table needs same no. pixels for this, RTM rawBiomassMap, LCC.. etc
@@ -1526,27 +1477,27 @@ Save <- function(sim) {
                  alsoExtract = "similar",
                  destinationPath = dPath,
                  writeTo = NULL,
-                 to = sim$studyAreaLarge,
+                 to = sim$studyArea_biomassParam,
                  fun = getOption("reproducible.shapefileRead"),
                  overwrite = TRUE),
       .functionName = "prepInputs_forEcoregionLayer",
       userTags = c("prepInputsEcoDistrict_SA", currentModule(sim), cacheTags)
     )
   }
-
+  
   if (P(sim)$overrideAgeInFires) {
     if (!suppliedElsewhere("firePerimeters", sim)) {
-      sa <- if (is(sim$studyAreaLarge, "sf")) {
-        aggregate(sim$studyAreaLarge, list(rep(1, nrow(sim$studyAreaLarge))),
+      sa <- if (is(sim$studyArea_biomassParam, "sf")) {
+        aggregate(sim$studyArea_biomassParam, list(rep(1, nrow(sim$studyArea_biomassParam))),
                   FUN = function(x) x)
       } else {
-        aggregate(sim$studyAreaLarge)
+        aggregate(sim$studyArea_biomassParam)
       }
       sim$firePerimeters <- Cache(
         prepInputsFireYear,
         destinationPath = dPath,
         studyArea = sa,
-        rasterToMatch = sim$rasterToMatchLarge,
+        rasterToMatch = sim$rasterToMatch_biomassParam,
         overwrite = TRUE,
         url = extractURL("firePerimeters"),
         fireField = "YEAR",
@@ -1555,7 +1506,7 @@ Save <- function(sim) {
       )
     }
   }
-
+  
   ## Stand age map ------------------------------------------------
   if (!suppliedElsewhere("standAgeMap", sim)) {
     if (P(sim)$dataYear == 2001) {
@@ -1565,11 +1516,11 @@ Save <- function(sim) {
     } else {
       stop("'P(sim)$dataYear' must be 2001 OR 2011")
     }
-    sa <- if (is(sim$studyAreaLarge, "sf")) {
-      aggregate(sim$studyAreaLarge, list(rep(1, nrow(sim$studyAreaLarge))),
+    sa <- if (is(sim$studyArea_biomassParam, "sf")) {
+      aggregate(sim$studyArea_biomassParam, list(rep(1, nrow(sim$studyArea_biomassParam))),
                 FUN = function(x) x)
     } else {
-      aggregate(sim$studyAreaLarge)
+      aggregate(sim$studyArea_biomassParam)
     }
     httr::with_config(config = httr::config(ssl_verifypeer = P(sim)$.sslVerify), {
       sim$standAgeMap <- Cache(
@@ -1578,7 +1529,7 @@ Save <- function(sim) {
         destinationPath = dPath,
         ageURL = ageURL,
         studyArea = sa,
-        rasterToMatch = sim$rasterToMatchLarge,
+        rasterToMatch = sim$rasterToMatch_biomassParam,
         # writeTo = .suffix("standAgeMap.tif", paste0("_", P(sim)$.studyAreaName)),
         overwrite = TRUE,
         useCache = FALSE, ## TODO: temporary FALSE due to attributes being lost on retrieval
@@ -1591,43 +1542,43 @@ Save <- function(sim) {
       )
     })
   }
-
+  
   LandR::assertStandAgeMapAttr(sim$standAgeMap)
   sim$imputedPixID <- attr(sim$standAgeMap, "imputedPixID")
-
+  
   ## check parameter consistency across modules
   paramCheckOtherMods(sim, "dataYear", ifSetButDifferent = "warning")
   paramCheckOtherMods(sim, "minCoverThreshold", ifSetButDifferent = "warning")
-
+  
   paramCheckOtherMods(sim, "sppEquivCol", ifSetButDifferent = "error")
   paramCheckOtherMods(sim, "vegLeadingProportion", ifSetButDifferent = "error")
-
+  
   ## Species equivalencies table and associated columns ----------------------------
   ## make sppEquiv table and associated columns, vectors
   ## do not use suppliedElsewhere here as we need the tables to exist (or not)
   ## already (rather than potentially being supplied by a downstream module)
   ## the function checks whether the tables exist internally.
-
+  
   sppOuts <- sppHarmonize(sim$sppEquiv, sim$sppNameVector, P(sim)$sppEquivCol,
-                          sim$sppColorVect, P(sim)$vegLeadingProportion, sim$studyAreaLarge)
+                          sim$sppColorVect, P(sim)$vegLeadingProportion, sim$studyArea_biomassParam)
   ## the following may, or may not change inputs
   sim$sppEquiv <- sppOuts$sppEquiv
   sim$sppNameVector <- sppOuts$sppNameVector
   P(sim, module = currentModule(sim))$sppEquivCol <- sppOuts$sppEquivCol
   sim$sppColorVect <- sppOuts$sppColorVect
-
+  
   ## check again
   paramCheckOtherMods(sim, "sppEquivCol", ifSetButDifferent = "error")
-
+  
   ## Species raster layers -------------------------------------------
   if (!suppliedElsewhere("speciesLayers", sim)) {
     httr::with_config(config = httr::config(ssl_verifypeer = P(sim)$.sslVerify), {
       sim$speciesLayers <- Cache(prepSpeciesLayers_KNN,
                                  destinationPath = dPath,
                                  outputPath = dPath,
-                                 studyArea = sim$studyAreaLarge,
+                                 studyArea = sim$studyArea_biomassParam,
                                  studyAreaName = P(sim)$.studyAreaName,
-                                 rasterToMatch = sim$rasterToMatchLarge,
+                                 rasterToMatch = sim$rasterToMatch_biomassParam,
                                  sppEquiv = sim$sppEquiv,
                                  sppEquivCol = P(sim)$sppEquivCol,
                                  thresh = 10,
@@ -1635,21 +1586,21 @@ Save <- function(sim) {
                                  userTags = c(cacheTags, "speciesLayers"),
                                  omitArgs = c("userTags"))
     })
-
+    
     ## make sure empty pixels inside study area have 0 cover, instead of NAs.
     ## this can happen when data has NAs instead of 0s and is not merged/overlayed (e.g. CASFRI)
-    sim$speciesLayers <- NAcover2zero(sim$speciesLayers, sim$rasterToMatchLarge)
+    sim$speciesLayers <- NAcover2zero(sim$speciesLayers, sim$rasterToMatch_biomassParam)
   }
-
+  
   ## 3. species maps
   if (!suppliedElsewhere("speciesTable", sim)) {
     sim$speciesTable <- getSpeciesTable(dPath = dPath, cacheTags = c(cacheTags, "speciesTable"))
   }
-
+  
   if (!suppliedElsewhere("columnsForPixelGroups", sim)) {
     sim$columnsForPixelGroups <- LandR::columnsForPixelGroups()
   }
-
+  
   return(invisible(sim))
 }
 
