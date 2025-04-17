@@ -1366,18 +1366,6 @@ Save <- function(sim) {
   dPath <- asPath(inputPath(sim), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
   
-  ## 1. test if all input objects are already present (e.g., from inputs, objects or another module)
-  a <- depends(sim)
-  whThisMod <- which(unlist(lapply(a@dependencies, function(x) x@name)) == "Biomass_borealDataPrep")
-  objNames <- a@dependencies[[whThisMod]]@inputObjects$objectName
-  objExists <- !unlist(lapply(objNames, function(x) is.null(sim[[x]])))
-  names(objExists) <- objNames
-  
-  ## for backwards compatibility -- change from parameter to object
-  if (!suppliedElsewhere("cloudFolderID", sim)) {
-    if (!is.null(P(sim)$cloudFolderID))
-      sim$cloudFolderID <- P(sim)$cloudFolderID
-  }
   ## Study area(s) ------------------------------------------------
   if (!suppliedElsewhere("studyArea", sim)) {
     sim$studyArea <- randomStudyArea(seed = 1234, size = (250^2)*100)  # Jan 2021 we agreed to force user to provide a SA/SAL
