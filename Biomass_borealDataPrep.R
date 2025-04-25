@@ -584,7 +584,7 @@ createBiomass_coreInputs <- function(sim) {
     ecoregionRst = sim$ecoregionRst,
     ecoregionLayer = sim$ecoregionLayer,
     ecoregionLayerField = P(sim)$ecoregionLayerField,
-    rasterToMatch_biomassParam = sim$rasterToMatch_biomassParam,
+    rasterToMatchLarge = sim$rasterToMatch_biomassParam,
     rstLCCAdj = rstLCCAdj,
     pixelsToRm = pixelsToRm,
     cacheTags = c(cacheTags, "prepEcoregionFiles")
@@ -1386,8 +1386,8 @@ Save <- function(sim) {
             params(sim)[[currentModule(sim)]][[".studyAreaName"]])
   }
   
-  studyArea <- sf::st_as_sf(studyArea)
-  studyArea_biomassParam <- sf::st_as_sf(studyArea_biomassParam)
+  studyArea <- sf::st_as_sf(sim$studyArea)
+  studyArea_biomassParam <- sf::st_as_sf(sim$studyArea_biomassParam)
   
   ## this is necessary if studyArea and studyArea_biomassParam are multipolygon objects
   if (nrow(studyArea) > 1) {
