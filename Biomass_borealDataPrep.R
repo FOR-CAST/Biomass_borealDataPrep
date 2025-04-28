@@ -1372,7 +1372,7 @@ Save <- function(sim) {
   }
   
   if (!suppliedElsewhere("studyArea_biomassParam", sim)) {
-    if (!is.null(sim$studyAreaLarge)) {
+    if (is.null(sim$studyAreaLarge)) {
       sim$studyArea_biomassParam <- sim$studyArea
     } else {
       warning("please replace studyAreaLarge with studyArea_biomassParam")
@@ -1402,14 +1402,15 @@ Save <- function(sim) {
   rm(studyArea, studyArea_biomassParam)
   
   if (!suppliedElsewhere("rasterToMatch", sim)) {
+    studyArea <- sim$studyArea
     if (terra::is.lonlat(sim$studyArea)) {
-      targetRes <- c(0.00333, 0.00333)
-    } else {
-      targetRes <- c(250, 250)
+      #use NTEMS projection - LandR requires projected rasters for dispersal
+      studyArea <- project(studyArea,
+                           paste0("+proj=lcc +lat_0=49 +lon_0=-95 +lat_1=49 +lat_2=77",
+                                  " +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +type=crs"))
     }
-    sim$rasterToMatch <- rast(sim$studyArea, 
-                              res = targetRes, vals = 1) |>
-      mask(mask = sim$studyArea)
+    sim$rasterToMatch <- rast(studyArea, res = c(250, 250), vals = 1) |>
+      mask(mask = studyArea)
   }
   
   if (!suppliedElsewhere("rasterToMatch_biomassParam", sim)) { 
