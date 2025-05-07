@@ -301,12 +301,12 @@ defineModule(sim, list(
     expectsInput("studyAreaLarge", "sfc",
                  desc = paste("multipolygon (potentially larger than `studyArea`) used for parameter estimation,",
                               "Must be supplied by the user. If larger than `studyArea`, it must fully contain it.",
-                              "Can also be a SpatVector."))
+                              "Can also be a `SpatVector`."))
   ),
   outputObjects = bindrows(
     createsOutput("biomassMap", "SpatRaster",
                   paste("total biomass raster layer in study area,",
-                        "filtered for pixels covered by cohortData. Units in $g/m^2$")),
+                        "filtered for pixels covered by `cohortData`. Units in $g/m^2$")),
     createsOutput("cohortData", "data.table",
                   paste("initial community table, containing corrected biomass ($g/m^2$), age and",
                         "species cover data, as well as ecolocation and `pixelGroup` information. This table defines",
@@ -318,7 +318,7 @@ defineModule(sim, list(
     createsOutput("firePerimeters", "SpatRaster",
                   paste("As the input object `firePerimeters`, but potentially cropped/masked/projected to match `rasterToMatchLarge`")),
     createsOutput("imputedPixID", "integer",
-                  paste("A vector of pixel IDs - matching rasterMatch IDs - that suffered data imputation.",
+                  paste("A vector of pixel IDs - matching `rasterMatch` IDs - that suffered data imputation.",
                         "Data imputation may be in age (to match last fire event post 1950s, or 0 cover),",
                         "biomass (to match fire-related imputed ages, correct for missing values or for 0 age/cover),",
                         "land cover (to convert non-forested classes into to nearest forested class)")),
