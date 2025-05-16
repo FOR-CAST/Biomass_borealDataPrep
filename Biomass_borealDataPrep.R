@@ -1403,7 +1403,10 @@ Save <- function(sim) {
   
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     studyArea <- sim$studyArea
-    if (terra::is.lonlat(sim$studyArea)) {
+    if (!inherits(studyArea, "SpatVector")) {
+      studyArea <- vect(studyArea)
+    }
+    if (terra::is.lonlat(studyArea)) {
       #use NTEMS projection - LandR requires projected rasters for dispersal
       studyArea <- project(studyArea,
                            paste0("+proj=lcc +lat_0=49 +lon_0=-95 +lat_1=49 +lat_2=77",
