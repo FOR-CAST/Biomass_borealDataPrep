@@ -21,7 +21,7 @@ defineModule(sim, list(
                   "merTools", "plyr", "rasterVis", "sf", "terra",
                   "reproducible (>= 2.1.0)",
                   "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-                  "PredictiveEcology/LandR@development (>= 1.1.5.9025)",
+                  "PredictiveEcology/LandR@development (>= 1.1.5.9043)",
                   "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)", ## TODO: update this once merged
                   "PredictiveEcology/pemisc@development"),
   parameters = rbind(
@@ -459,13 +459,10 @@ createBiomass_coreInputs <- function(sim) {
   }
 
   if (P(sim)$overrideAgeInFires) {
-    if (!.compareRas(sim$firePerimeters, sim$rasterToMatch_biomassParam, res = TRUE, stopOnError = FALSE)) {
-      sim$firePerimeters <- Cache(postProcess,
-                                  sim$firePerimeters,
-                                  earliestFireYear = P(sim)$earliestFireYear,
-                                  to = sim$rasterToMatch_biomassParam,
-                                  overwrite = TRUE)
-    }
+    sim$firePerimeters <- Cache(postProcess,
+                                sim$firePerimeters,
+                                to = sim$rasterToMatch_biomassParam,
+                                overwrite = TRUE)
   }
   # options(opt)
   if (!.compareRas(sim$speciesLayers, sim$rasterToMatch_biomassParam, res = TRUE)) {
@@ -1114,7 +1111,7 @@ createBiomass_coreInputs <- function(sim) {
                    "defined in 'firePerimeters'."))
       message(blue("To skip this step, set 'P(sim)$overrideBiomassInFires' to FALSE."))
 
-      firstFireYear <- min(as.vector(sim$firePerimeters[]), na.rm = TRUE) # 1986 # as.numeric(gsub("^.+nbac_(.*)_to.*$", "\\1", fireURL))
+      firstFireYear <- P(sim)$earliestFireYear
       ## this is not necessary when using min(),
       ## but will be kept in case we use something else in the future
       whichFiresTooOld <- which(as.vector(sim$firePerimeters[]) < firstFireYear)
