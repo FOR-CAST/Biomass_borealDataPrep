@@ -47,6 +47,9 @@ defineModule(sim, list(
                     paste("Model and formula used for estimating cover from `ecoregionGroup` and `speciesCode`",
                           "and potentially others. Defaults to a GLMEM if there are > 1 grouping levels.",
                           "A custom model call can also be provided, as long as the 'data' argument is NOT included")),
+    defineParameter("earliestFireYear", "integer", 1950L, NA, NA,
+                    paste("if using fires to impute stand age and biomass, the earliest year for which",
+                          "fire data should be obtained")),
     defineParameter("fixModelBiomass", "logical", FALSE, NA, NA,
                     paste("should `biomassModel` be fixed in the case of non-convergence?",
                           "Only scaling of variables and attempting to fit with a new optimizer (bobyqa, see `?lme4`)",
@@ -459,6 +462,7 @@ createBiomass_coreInputs <- function(sim) {
     if (!.compareRas(sim$firePerimeters, sim$rasterToMatch_biomassParam, res = TRUE, stopOnError = FALSE)) {
       sim$firePerimeters <- Cache(postProcess,
                                   sim$firePerimeters,
+                                  earliestFireYear = P(sim)$earliestFireYear,
                                   to = sim$rasterToMatch_biomassParam,
                                   overwrite = TRUE)
     }
@@ -1121,7 +1125,7 @@ createBiomass_coreInputs <- function(sim) {
         sim$firePerimeters[whichFiresTooOld] <- NA
       }
 
-      maxAgeHighQualityData <- start(sim) - firstFireYear
+      maxAgeHighQualityData <- P(sim)$dataYear - firstFireYear
       ## if maxAgeHighQualityData is lower than 0, it means it's prior to the first fire Year
       ## or not following calendar year
 
@@ -1438,7 +1442,7 @@ Save <- function(sim) {
       url = biomassURL,
       studyAreaName = P(sim)$.studyAreaName,
       cacheTags = cacheTags,
-      to =  sim$rasterToMatch_biomassParam, 
+      to =  sim$rasterToMatch_biomassParam,
       destinationPath = dPath)
   }
   
@@ -1520,14 +1524,13 @@ Save <- function(sim) {
         ageFun = getOption("reproducible.rasterRead", "terra::rast"), ## backwards compatible default
         destinationPath = dPath,
         ageURL = ageURL,
-        studyArea = sa,
         rasterToMatch = sim$rasterToMatch_biomassParam,
         # writeTo = .suffix("standAgeMap.tif", paste0("_", P(sim)$.studyAreaName)),
         overwrite = TRUE,
         useCache = FALSE, ## TODO: temporary FALSE due to attributes being lost on retrieval
         firePerimeters = if (P(sim)$overrideAgeInFires) sim$firePerimeters else NULL,
         fireURL = if (P(sim)$overrideAgeInFires) extractURL("firePerimeters") else NULL,
-        startTime = start(sim),
+        startTime = P(sim)$dataYear,
         userTags = c("prepInputsStandAge_rtm", currentModule(sim), cacheTags),
         omitArgs = c("destinationPath", "targetFile", "overwrite",
                      "alsoExtract", "userTags")
