@@ -1200,11 +1200,12 @@ createBiomass_coreInputs <- function(sim) {
 
   # Fill in any remaining B values that are still NA -- the previous chunk filled in B for young cohorts only
   if (anyNA(pixelCohortData$B)) {
+
     theNAsBiomass <- is.na(pixelCohortData$B)
     message(blue(" -- ", sum(theNAsBiomass),"cohort(s) has NA for Biomass: being replaced with model-derived estimates"))
     set(pixelCohortData, which(theNAsBiomass), "B",
-        asInteger(predict(modelBiomass$mod, newdata = pixelCohortData[theNAsBiomass],
-                          allow.new.levels = TRUE)))
+        pmax(0, asInteger(predict(modelBiomass$mod, newdata = pixelCohortData[theNAsBiomass],
+                          allow.new.levels = TRUE))))
     sim$imputedPixID <- unique(c(sim$imputedPixID, pixelCohortData[theNAsBiomass, pixelIndex]))
   }
 
