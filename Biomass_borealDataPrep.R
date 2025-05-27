@@ -1114,14 +1114,6 @@ createBiomass_coreInputs <- function(sim) {
       firstFireYear <- P(sim)$earliestFireYear
       ## this is not necessary when using min(),
       ## but will be kept in case we use something else in the future
-      whichFiresTooOld <- which(as.vector(sim$firePerimeters[]) < firstFireYear)
-
-      if (length(whichFiresTooOld)) {
-        message("There were fires in the database older than ", firstFireYear, ";",
-                " The data from these will not be used because firstFireYear = ", firstFireYear)
-        sim$firePerimeters[whichFiresTooOld] <- NA
-      }
-
       maxAgeHighQualityData <- P(sim)$dataYear - firstFireYear
       ## if maxAgeHighQualityData is lower than 0, it means it's prior to the first fire Year
       ## or not following calendar year
@@ -1131,7 +1123,7 @@ createBiomass_coreInputs <- function(sim) {
         youngRows <- pixelCohortData$age <= maxAgeHighQualityData
         young <- pixelCohortData[youngRows == TRUE]
 
-        youngRows2 <- !is.na(as.vector(sim$firePerimeters[young$pixelIndex]))
+        youngRows2 <- !is.na(sim$firePerimeters[][young$pixelIndex])
         young <- young[youngRows2]
 
         # whYoungBEqZero <- which(young$B == 0)
@@ -1498,9 +1490,16 @@ Save <- function(sim) {
         omitArgs = "destinationPath",
         userTags = c(cacheTags, "firePerimeters")
       )
+      whichFiresTooOld <- which(as.vector(sim$firePerimeters[]) < P(sim)$earliestFireYear)
+
+      if (length(whichFiresTooOld)) {
+        message("There were fires in the database older than ", P(sim)$earliestFireYear, ";",
+                " The data from these will not be used")
+        sim$firePerimeters[whichFiresTooOld] <- NA
+      }
     }
   }
-  
+
   ## Stand age map ------------------------------------------------
   if (!suppliedElsewhere("standAgeMap", sim)) {
     if (P(sim)$dataYear == 2001) {
