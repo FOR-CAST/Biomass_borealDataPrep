@@ -79,7 +79,7 @@ defineModule(sim, list(
                     paste("If TRUE, this will re-estimate `P(sim)$fitDeciduousCoverDiscount` This may be unstable and",
                           "is not recommended currently. If `FALSE`, will use the current default")),
     ## -------------------------------------------------------------------------------------------
-    defineParameter("dataYear", "numeric", 2001, NA, NA,
+    defineParameter("dataYear", "numeric", 2011, NA, NA,
                     paste("Used to override the default 'sourceURL' of KNN datasets (species cover, stand biomass",
                           "and stand age), which point to 2001 data, to fetch KNN data for another year. Currently,",
                           "the only other possible year is 2011. Will also select NTEMS landcover from appropriate year.")),
@@ -620,7 +620,7 @@ createBiomass_coreInputs <- function(sim) {
     minCoverThreshold = P(sim)$minCoverThreshold,
     doSubset = P(sim)$subsetDataAgeModel
   ) |>
-    Cache(userTags = c(cacheTags, "pixelCohortData"), omitArgs = c("userTags"))
+    Cache(userTags = c(cacheTags, "pixelCohortData"))
   assertCohortDataAttr(pixelCohortData)
 
   sim$imputedPixID <- unique(c(sim$imputedPixID, attr(pixelCohortData, "imputedPixID")))
