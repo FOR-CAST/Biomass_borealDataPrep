@@ -737,12 +737,96 @@ createBiomass_coreInputs <- function(sim) {
     # availableCombinations <- unique(pixelCohortData[!(lcc %in% uwc),
     #                                                 .(speciesCode, initialEcoregionCode, pixelIndex)])
 
-    newLCCClasses <- Cache(convertUnwantedLCC,
-                           classesToReplace = P(sim)$LCCClassesToReplaceNN,
-                           rstLCC = rstLCCAdj,
-                           availableERC_by_Sp = availableCombinations,
-                           userTags = c(cacheTags, "newLCCClasses", "stable"),
-                           omitArgs = c("userTags"))
+    freqsUpdates <- startFinishLCC <- list()
+    lastYrOnNTEMS <- NTEMSfinalYearForLCC(timeout = 10) |> Cache()
+
+    for (yr in c(lastYrOnNTEMS, 1984)) {
+      freqs <- freq(rstLCCAdj)
+      # freqs <- table(terra::values(rstLCCAdj, mat = FALSE))
+      if (freqs$count[freqs$value %in% Par$LCCClassesToReplaceNN ] > 1000) {
+        yrChar <- as.character(yr)
+        startFinishLCC[[yrChar]] <-
+          prepInputs_NTEMS_LCC_FAO(
+            year = yr,
+            maskTo = sim$studyAreaLarge,
+            cropTo = sim$rasterToMatchLarge,
+            projectTo = sim$rasterToMatchLarge,
+            disturbedCode = 240,
+            destinationPath = inputPath(sim),
+            overwrite = TRUE
+          ) |>
+          Cache(
+            userTags = c("rstLCC", yr, "_", currentModule(sim),
+                         P(sim)$.studyAreaName, P(sim)$dataYear)
+          )
+        cellsToUpdate <- which(rstLCCAdj[] == Par$LCCClassesToReplaceNN)
+        rstLCCAdj[cellsToUpdate] <- startFinishLCC[[yrChar]][cellsToUpdate]
+        whUpdate <- match(cellsToUpdate, pixelTable$pixelIndex)
+        pixelTable[whUpdate, newLcc := startFinishLCC[[yrChar]][cellsToUpdate]]
+        pixelTable[whUpdate, initialEcoregionCode2 := gsub("_.+", "", initialEcoregionCode)]
+        pixelsToRm2 <- nonForestedPixels(rstLCCAdj, P(sim)$omitNonTreedPixels,
+                                         P(sim)$forestedLCCClasses, rstLCCAdj)
+        pixelsToRm3 <- which(pixelsToRm2)
+        pixelsToRm4 <- na.omit(match(pixelsToRm3, pixelTable$pixelIndex))
+        if (length(pixelsToRm4)) { # are there any new ones that are not forestedLCCClasses
+          pixelTable <- pixelTable[-pixelsToRm4]
+        }
+        pixelTable[!is.na(newLcc), `:=`(lcc = newLcc,
+                                        initialEcoregionCode = paste0(initialEcoregionCode2, "_", newLcc))]
+        set(pixelTable, NULL, c("newLcc", "initialEcoregionCode2"), NULL)
+        # pixelTable[initialEcoregionCode != initialEcoregionCode2]
+        rstLCCAdj[pixelsToRm2] <- NA
+      }
+    }
+
+    # ecoregionFiles2 <- prepEcoregions(
+    #   ecoregionRst = sim$ecoregionRst,
+    #   ecoregionLayer = sim$ecoregionLayer,
+    #   ecoregionLayerField = P(sim)$ecoregionLayerField,
+    #   rasterToMatchLarge = sim$rasterToMatchLarge,
+    #   rstLCCAdj = rstLCCAdj,
+    #   pixelsToRm = pixelsToRm2,
+    #   cacheTags = c(cacheTags, "prepEcoregionFiles")
+    # ) |>
+    #   Cache()
+    #
+    # pixelTable2 <- makePixelTable(
+    #   speciesLayers = sim$speciesLayers,
+    #   standAgeMap = sim$standAgeMap,
+    #   ecoregionFiles = ecoregionFiles2,
+    #   biomassMap = sim$rawBiomassMap,
+    #   rasterToMatch = sim$rasterToMatchLarge,
+    #   rstLCC = rstLCCAdj
+    # ) |>
+    #   Cache(userTags = c(cacheTags, "pixelTable"), omitArgs = c("userTags"))
+    # pixelTable2[, rasterToMatch := NULL]
+
+    ## create initial pixelCohortData table ---------------
+    # Might already have cover. in the names
+    coverColNames <- colnames(pixelTable)[match(sim$species$species,
+                                                 gsub("cover.(.+)", "\\1", colnames(pixelTable)))]
+    # coverColNames <- paste0("cover.", coverColNames)
+    # coverColNames <- gsub("cover.(.+)", paste0("cover.", "\\1"), coverColNames)
+    pixelCohortData <- makeAndCleanInitialCohortData(
+      inputDataTable = pixelTable,
+      sppColumns = coverColNames,
+      imputeBadAgeModel = P(sim)$imputeBadAgeModel,
+      minCoverThreshold = P(sim)$minCoverThreshold,
+      doSubset = P(sim)$subsetDataAgeModel
+    ) |>
+      Cache(userTags = c(cacheTags, "pixelCohortData"), omitArgs = c("userTags"))
+    assertCohortDataAttr(pixelCohortData)
+    pixelCohortData <- Cache(partitionBiomass(x = P(sim)$deciduousCoverDiscount, pixelCohortData))
+    set(pixelCohortData, NULL, "B", asInteger(pixelCohortData$B/P(sim)$pixelGroupBiomassClass) *
+          P(sim)$pixelGroupBiomassClass)
+    set(pixelCohortData, NULL, "cover", asInteger(pixelCohortData$cover))
+    pixelCohortData <- pixelCohortData[!is.na(pixelCohortData$lcc)]
+    availableCombinations2 <- unique(pixelCohortData[, .(speciesCode, initialEcoregionCode, pixelIndex)])
+
+    newLCCClasses <- convertUnwantedLCC(classesToReplace = P(sim)$LCCClassesToReplaceNN,
+                                        rstLCC = rstLCCAdj,
+                                        availableERC_by_Sp = availableCombinations2) |>
+      Cache(userTags = c(cacheTags, "newLCCClasses", "stable"))
   } else {
     newLCCClasses <- data.table(pixelIndex = numeric(), ecoregionGroup = numeric())
   }
