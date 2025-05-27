@@ -832,39 +832,39 @@ createBiomass_coreInputs <- function(sim) {
   }
 
   sim$imputedPixID <- unique(c(sim$imputedPixID, newLCCClasses$pixelIndex))
-  ## split pixelCohortData into 2 parts -- one with the former 34:36 pixels, one without
-  ##   The one without 34:36 can be used for statistical estimation, but not the one with
-  cohortData34to36 <- pixelCohortData[pixelIndex %in% newLCCClasses$pixelIndex]
-  cohortData34to36 <- merge(newLCCClasses, cohortData34to36, all.x = TRUE,
+  ## split pixelCohortData into 2 parts -- one with the former P(sim)$LCCClassesToReplaceNN pixels, one without
+  ##   The one without P(sim)$LCCClassesToReplaceNN can be used for statistical estimation, but not the one with
+  cohortDataOnlyNonForestLCC <- pixelCohortData[pixelIndex %in% newLCCClasses$pixelIndex]
+  cohortDataOnlyNonForestLCC <- merge(newLCCClasses, cohortDataOnlyNonForestLCC, all.x = TRUE,
                             all.y = FALSE, by = "pixelIndex")
-  cohortDataNo34to36 <- pixelCohortData[!pixelIndex %in% newLCCClasses$pixelIndex]
+  cohortDataOnlyForestLCC <- pixelCohortData[!pixelIndex %in% newLCCClasses$pixelIndex]
   if (!length(P(sim)$LCCClassesToReplaceNN)) {
-    if (!all.equal(cohortDataNo34to36, pixelCohortData, check.attributes = FALSE))
+    if (!all.equal(cohortDataOnlyForestLCC, pixelCohortData, check.attributes = FALSE))
       stop("No LCC classes were listed for replacement, but some pixels may have been lost")
   }
-  setnames(cohortDataNo34to36, "initialEcoregionCode", "ecoregionGroup")
+  setnames(cohortDataOnlyForestLCC, "initialEcoregionCode", "ecoregionGroup")
   rmZeroBiomassQuote <- quote(totalBiomass > 0)
-  cohortDataNo34to36Biomass <- cohortDataNo34to36[eval(rmZeroBiomassQuote),
+  cohortDataOnlyForestLCCBiomass <- cohortDataOnlyForestLCC[eval(rmZeroBiomassQuote),
                                                   .(B, logAge, speciesCode, ecoregionGroup, lcc, cover)]
-  cohortDataNo34to36Biomass <- unique(cohortDataNo34to36Biomass)
+  cohortDataOnlyForestLCCBiomass <- unique(cohortDataOnlyForestLCCBiomass)
 
   ## make sure ecoregionGroups match
   ## remember to match rmZeroBiomassQuote the rule used to filter `availableCombinations` (NULL if none)
   if (length(P(sim)$LCCClassesToReplaceNN)) {
-    assert1(cohortData34to36, pixelCohortData, rmZeroBiomassQuote = NULL,
+    assert1(cohortDataOnlyNonForestLCC, pixelCohortData, rmZeroBiomassQuote = NULL,
             classesToReplace = P(sim)$LCCClassesToReplaceNN)
-    assert2(cohortDataNo34to36, classesToReplace = P(sim)$LCCClassesToReplaceNN)
+    assert2(cohortDataOnlyForestLCC, classesToReplace = P(sim)$LCCClassesToReplaceNN)
   }
 
   ## Statistical estimation of establishprob, maxB and maxANPP ----------------------
-  cohortDataShort <- cohortDataNo34to36[, list(coverPres = sum(cover > 0)),
+  cohortDataShort <- cohortDataOnlyForestLCC[, list(coverPres = sum(cover > 0)),
                                         by = c("ecoregionGroup", "speciesCode")]
   ## find coverNum for each known class
   ## add new ecoregions to pixelTable, before calc. table
   cohortDataShortNoCover <-
     (function(x) {
-      tempDT <- rbind(cohortData34to36[, .(pixelIndex, ecoregionGroup)],
-                      cohortDataNo34to36[, .(pixelIndex, ecoregionGroup)])
+      tempDT <- rbind(cohortDataOnlyNonForestLCC[, .(pixelIndex, ecoregionGroup)],
+                      cohortDataOnlyForestLCC[, .(pixelIndex, ecoregionGroup)])
       pixelTable <- tempDT[pixelTable, on = .(pixelIndex)]
 
       aa <- table(as.character(pixelTable$ecoregionGroup))   ## as.character avoids counting levels that don't exist anymore
@@ -876,10 +876,10 @@ createBiomass_coreInputs <- function(sim) {
       cohortDataShortNoCover <- cohortDataShort[dt1, on = c("ecoregionGroup", "speciesCode"), nomatch = NA]
     })() |>
     Cache(.functionName = "cohortDataShortNoCover",
-          .cacheExtra = list(cohortData34to36[, .(pixelIndex, ecoregionGroup)],
-                             cohortDataNo34to36[, .(pixelIndex, ecoregionGroup)],
-                             pixelTable,
-                             cohortDataShort))
+          .cacheExtra = list(a = cohortDataOnlyNonForestLCC[, .(pixelIndex, ecoregionGroup)],
+                             b = cohortDataOnlyForestLCC[, .(pixelIndex, ecoregionGroup)],
+                             d = pixelTable,
+                             e = cohortDataShort))
 
   # cohortDataShortNoCover <- cohortDataShort[coverPres == 0]
   cohortDataShort <- cohortDataShortNoCover[coverPres > 0] # remove places where there is 0 cover
@@ -940,7 +940,7 @@ createBiomass_coreInputs <- function(sim) {
 
   ## For biomass
   ### Subsample cases where there are more than 50 points in an ecoregionGroup * speciesCode
-  totalBiomass <- sum(cohortDataNo34to36Biomass$B, na.rm = TRUE)
+  totalBiomass <- sum(cohortDataOnlyForestLCCBiomass$B, na.rm = TRUE)
 
   ## There are several reasons why the modelBiomass can fail;
   ##   1) inappropriate sub-sample
@@ -951,7 +951,7 @@ createBiomass_coreInputs <- function(sim) {
   maxDataSubsetTries <- ifelse(isTRUE(P(sim)$subsetDataBiomassModel > 0),
                                P(sim)$subsetDataAttempts, 1)
   for (tryBiomassDataSubset in 1:maxDataSubsetTries) {
-    cohortDataNo34to36BiomassSubset <- subsetDT(cohortDataNo34to36Biomass,
+    cohortDataOnlyForestLCCBiomassSubset <- subsetDT(cohortDataOnlyForestLCCBiomass,
                                                 by = c("ecoregionGroup", "speciesCode"),
                                                 doSubset = P(sim)$subsetDataBiomassModel)
 
@@ -966,14 +966,14 @@ createBiomass_coreInputs <- function(sim) {
     ## (or at least capped at high age values). Ideally, we would want a non-linear model
 
     # Default values of args to modelBiomass -- prior to any attempts to fix
-    ueg <- .sortDotsUnderscoreFirst(as.character(unique(cohortDataNo34to36BiomassSubset$ecoregionGroup)))
-    specDat <- cohortDataNo34to36BiomassSubset
+    ueg <- .sortDotsUnderscoreFirst(as.character(unique(cohortDataOnlyForestLCCBiomassSubset$ecoregionGroup)))
+    specDat <- cohortDataOnlyForestLCCBiomassSubset
     modelFn <- P(sim)$biomassModel
     sumResponse <- c(totalBiomass)
 
     fixModelBiomass <- P(sim)$fixModelBiomass
     timePriorToFit <- Sys.time()
-    cohortDataNo34to36BiomassSubset2 <- copy(cohortDataNo34to36BiomassSubset)
+    cohortDataOnlyForestLCCBiomassSubset2 <- copy(cohortDataOnlyForestLCCBiomassSubset)
 
     tryControl <- FALSE
     needRescaleModelB <- FALSE
@@ -1001,16 +1001,16 @@ createBiomass_coreInputs <- function(sim) {
         if (any(grepl("Rescale", modMessages)) & !needRescaleModelB) {
           message(blue("Trying to rescale variables to refit P(sim)$biomassModel"))
           ## save this in separate objects for later
-          logAge_sc <- scale(cohortDataNo34to36BiomassSubset$logAge)
-          cover_sc <- scale(cohortDataNo34to36BiomassSubset$cover)
+          logAge_sc <- scale(cohortDataOnlyForestLCCBiomassSubset$logAge)
+          cover_sc <- scale(cohortDataOnlyForestLCCBiomassSubset$cover)
 
           scaledVarsModelB <- list(logAge = logAge_sc, cover = cover_sc)
           ## remove attributes with as.numeric
           ## don't change the original data
-          cohortDataNo34to36BiomassSubset2[, `:=`(logAge = as.numeric(logAge_sc),
+          cohortDataOnlyForestLCCBiomassSubset2[, `:=`(logAge = as.numeric(logAge_sc),
                                                   cover = as.numeric(cover_sc))]
           needRescaleModelB <- TRUE
-          ueg <- .sortDotsUnderscoreFirst(as.character(unique(cohortDataNo34to36BiomassSubset2$ecoregionGroup)))
+          ueg <- .sortDotsUnderscoreFirst(as.character(unique(cohortDataOnlyForestLCCBiomassSubset2$ecoregionGroup)))
         } else {
           message(blue("Trying to refit P(sim)$biomassModel with 'bobyqa' optimizer"))
           ## redo model call with new optimizer
@@ -1028,7 +1028,7 @@ createBiomass_coreInputs <- function(sim) {
         userTagsToClear <- c("statsModel", modelBiomassTags[1:3])
         suppressMessages(clearCache(userTags = userTagsToClear, # after = timePriorToFit,
                                     ask = FALSE))
-        specDat <- cohortDataNo34to36BiomassSubset2
+        specDat <- cohortDataOnlyForestLCCBiomassSubset2
         modelBiomassTags <- c("refit", "modelBiomass",
                               paste(c(if (needRescaleModelB) "rescaled",
                                       if (tryControl) "control"), collapse = "_"))
@@ -1068,15 +1068,15 @@ createBiomass_coreInputs <- function(sim) {
   }
 
   ## remove logB
-  # cohortDataNo34to36BiomassSubset[, logB := NULL]
+  # cohortDataOnlyForestLCCBiomassSubset[, logB := NULL]
 
   ## create speciesEcoregion ---------------------------------------------
   ## a single line for each combination of ecoregionGroup & speciesCode;
   ## doesn't include combinations with B = 0 because those places can't have the species/ecoregion combo
-  ## cohortDataNo34to36BiomassSubset ends up determining which ecoregion combinations end up in
+  ## cohortDataOnlyForestLCCBiomassSubset ends up determining which ecoregion combinations end up in
   ## species ecoregion, thus removing converted/masked classes present cohortDataShortNoCover
   message(blue("Create speciesEcoregion using modelCover and modelBiomass to estimate species traits"))
-  speciesEcoregion <- makeSpeciesEcoregion(cohortDataBiomass = cohortDataNo34to36BiomassSubset,
+  speciesEcoregion <- makeSpeciesEcoregion(cohortDataBiomass = cohortDataOnlyForestLCCBiomassSubset,
                                            cohortDataShort = cohortDataShort,
                                            cohortDataShortNoCover = cohortDataShortNoCover,
                                            species = sim$species,
@@ -1110,9 +1110,9 @@ createBiomass_coreInputs <- function(sim) {
   if (ncell(sim$rasterToMatchLarge) > 3e7) replicate(3, gc())
 
   ## Create initial communities, i.e., pixelGroups -----------------------
-  ## Rejoin back the pixels that were 34:36
-  set(cohortData34to36, NULL, "initialEcoregionCode", NULL)
-  pixelCohortData <- rbindlist(list(cohortData34to36, cohortDataNo34to36),
+  ## Rejoin back the pixels that were P(sim)$LCCClassesToReplaceNN
+  set(cohortDataOnlyNonForestLCC, NULL, "initialEcoregionCode", NULL)
+  pixelCohortData <- rbindlist(list(cohortDataOnlyNonForestLCC, cohortDataOnlyForestLCC),
                                use.names = TRUE, fill = TRUE)
 
   ## "Downsize" to studyArea after estimating parameters on studyAreaLarge --------------
@@ -1744,3 +1744,25 @@ Save <- function(sim) {
   return(invisible(sim))
 }
 
+
+#' Probe NTEMS NFI web page to find the final year available
+#'
+#' Starts searching
+#' `paste0("https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_", lastYrOnNTEMS, ".zip")`
+#' at current year (Sys.Date()), and subtract one year, try, subtract a year, try etc.
+#'
+#' @param timeout Numeric, in seconds, for how long to allow a download to happen
+#'   before interrupting it and declaring, "that worked, use that year".
+NTEMSfinalYearForLCC <- function(timeout = 5) {
+  resp <- ''
+  lastYrOnNTEMS <- as.integer(format(Sys.Date(), "%Y")) + 1
+
+  while(!is (resp, "try-error")) {
+    lastYrOnNTEMS <- lastYrOnNTEMS - 1
+    url <- paste0("https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_", lastYrOnNTEMS, ".zip")
+    req <- httr2::request(url) |> httr2::req_timeout(timeout)
+    resp <- try(httr2::req_perform(req), silent = TRUE)
+  }
+
+  lastYrOnNTEMS
+}
