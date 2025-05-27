@@ -127,6 +127,7 @@ spinUpPartial <- function(pixelCohortData, speciesEcoregion, maxAge,
                         sppEquivCol = sppEquivCol,
                         .useCache = NULL,
                         successionTimestep = 10,
+                        minCohortBiomass = 0,
                         initialBiomassSource = "cohortData",
                         vegLeadingProportion = 0
     ))
