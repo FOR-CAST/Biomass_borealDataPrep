@@ -565,29 +565,36 @@ createBiomass_coreInputs <- function(sim) {
 
   ## Clean pixels for veg. succession model
   ## remove pixels with no species data or non-forested LCC
-  pixelsToRm <- nonForestedPixels(sim$speciesLayers, P(sim)$omitNonTreedPixels,
-                                  P(sim)$forestedLCCClasses, sim$rstLCC)
-  rstLCCAdj <- sim$rstLCC
-  rstLCCAdj[pixelsToRm] <- NA
-
+  # ELIOT: updated May 7, 2025. The way pixelFateDT works is that it separates the NAs
+  #        from the nonForestedPixels. This next line (nonForestedPixels) does both, confounded.
+  #        Need to separate these steps (NA in specieLayers and nonForest classes)
+  #        Now it is run twice here, then after the printed line about NAs removed
+  pixelsToRmDueToNAs <- nonForestedPixels(sim$speciesLayers, omitNonTreedPixels = FALSE)
   pixelFateDT <- pixelFate(fate = "Total number pixels", runningPixelTotal = ncell(sim$speciesLayers))
-  pixelFateDT <- pixelFate(pixelFateDT, "NAs on sim$speciesLayers", sum(pixelsToRm))
+  pixelFateDT <- pixelFate(pixelFateDT, "NAs on sim$speciesLayers", sum(pixelsToRmDueToNAs))
   if (P(sim)$omitNonTreedPixels) {
+    if ( sum(!(as.vector(sim$rstLCC[]) %in% P(sim)$forestedLCCClasses)) -
+         tail(pixelFateDT$pixelsRemoved, 1) < 0) browser()
     pixelFateDT <- pixelFate(pixelFateDT, "Non forested pixels (based on LCC classes)",
                              sum(!(as.vector(sim$rstLCC[]) %in% P(sim)$forestedLCCClasses)) -
                                tail(pixelFateDT$pixelsRemoved, 1))
   }
-
+  pixelsToRmDueToNAsAndNonForest <- nonForestedPixels(sim$speciesLayers, P(sim)$omitNonTreedPixels,
+                                  P(sim)$forestedLCCClasses, sim$rstLCC)
   ## The next function will remove the "zero" class on sim$ecoregionRst
   pixelFateDT <- pixelFate(pixelFateDT, "Removing 0 class in sim$ecoregionRst",
-                           sum(as.vector(sim$ecoregionRst[])[!pixelsToRm] == 0, na.rm = TRUE))
+                           sum(as.vector(sim$ecoregionRst[])[!pixelsToRmDueToNAsAndNonForest] == 0, na.rm = TRUE))
+
+  rstLCCAdj <- sim$rstLCC
+  rstLCCAdj[pixelsToRmDueToNAsAndNonForest] <- NA
+
   ecoregionFiles <- prepEcoregions(
     ecoregionRst = sim$ecoregionRst,
     ecoregionLayer = sim$ecoregionLayer,
     ecoregionLayerField = P(sim)$ecoregionLayerField,
     rasterToMatchLarge = sim$rasterToMatchLarge,
     rstLCCAdj = rstLCCAdj,
-    pixelsToRm = pixelsToRm,
+    pixelsToRm = pixelsToRmDueToNAsAndNonForest,
     cacheTags = c(cacheTags, "prepEcoregionFiles")
   ) |>
     Cache()
