@@ -363,11 +363,6 @@ defineModule(sim, list(
     createsOutput("standAgeMap", "SpatRaster",
                   paste("As the input object `standAgeMap`, but potentially cropped, projected,",
                         "masked to match `rasterToMatch_biomassParam`.")),
-    createsOutput("studyArea", "sfc",
-                  paste("As the input object `studyArea`, but potentially projected to match `rasterToMatch` CRS.")),
-    createsOutput("studyArea_biomassParam", "sfc",
-                  paste("As the input object `studyArea_biomassParam`, but potentially projected to match `studyArea`",
-                        "and `rasterToMatch` CRS.")),
     createsOutput("sufficientLight", "data.frame",
                   paste("Probability of germination for species shade tolerance (in `species`)",
                         "and shade level`(defined by `minRelativeB`) combinations.",
@@ -550,17 +545,7 @@ createBiomass_coreInputs <- function(sim) {
 
   ## initialEcoregionMap -----------------------------------------
   if (!.compareCRS(sim$studyArea, sim$rasterToMatch)) {
-    warning(paste0("studyArea and rasterToMatch projections differ.\n",
-                   "studyArea will be projected to match rasterToMatch"))
-    sim$studyArea <- projectTo(sim$studyArea, crs(sim$rasterToMatch))
-    sim$studyArea <- fixErrors(sim$studyArea)
-  }
-
-  if (!.compareCRS(sim$studyArea_biomassParam, sim$rasterToMatch_biomassParam)) {
-    warning(paste0("studyArea_biomassParam and rasterToMatch_biomassParam projections differ.\n",
-                   "studyArea_biomassParam will be projected to match rasterToMatch_biomassParam"))
-    sim$studyArea_biomassParam <- projectTo(sim$studyArea_biomassParam, crs(sim$rasterToMatch_biomassParam))
-    sim$studyArea_biomassParam <- fixErrors(sim$studyArea_biomassParam)
+    warning("studyArea and rasterToMatch projections differ")
   }
 
   ## Clean pixels for veg. succession model
