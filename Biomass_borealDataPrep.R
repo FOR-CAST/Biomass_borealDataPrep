@@ -733,9 +733,7 @@ createBiomass_coreInputs <- function(sim) {
         startFinishLCC[[yrChar]] <-
           prepInputs_NTEMS_LCC_FAO(
             year = yr,
-            maskTo = sim$studyAreaLarge,
-            cropTo = sim$rasterToMatchLarge,
-            projectTo = sim$rasterToMatchLarge,
+            to = sim$rstLCC,
             disturbedCode = 240,
             destinationPath = inputPath(sim),
             overwrite = TRUE
@@ -756,8 +754,12 @@ createBiomass_coreInputs <- function(sim) {
         if (length(pixelsToRm4)) { # are there any new ones that are not forestedLCCClasses
           pixelTable <- pixelTable[-pixelsToRm4]
         }
-        pixelTable[!is.na(newLcc), `:=`(lcc = newLcc,
-                                        initialEcoregionCode = paste0(initialEcoregionCode2, "_", newLcc))]
+
+        ncharToPad <- max(nchar(pixelTable$lcc))
+        pixelTable[!is.na(newLcc), lcc := newLcc]
+        pixelTable[!is.na(newLcc),  initialEcoregionCode :=
+                     paste0(initialEcoregionCode2, "_",
+                            paddedFloatToChar(newLcc, ncharToPad))]
         set(pixelTable, NULL, c("newLcc", "initialEcoregionCode2"), NULL)
         # pixelTable[initialEcoregionCode != initialEcoregionCode2]
         rstLCCAdj[pixelsToRm2] <- NA
