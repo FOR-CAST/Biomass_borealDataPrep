@@ -573,6 +573,7 @@ createBiomass_coreInputs <- function(sim) {
   rstLCCAdj <- sim$rstLCC
   rstLCCAdj[pixelsToRmDueToNAsAndNonForest] <- NA
 
+  #make initial ecoregionFiles - some of these may have LCC that get replaced
   ecoregionFiles <- prepEcoregions(
     ecoregionRst = sim$ecoregionRst,
     ecoregionLayer = sim$ecoregionLayer,
@@ -687,47 +688,36 @@ createBiomass_coreInputs <- function(sim) {
         P(sim)$pixelGroupBiomassClass)
   set(pixelCohortData, NULL, "cover", asInteger(pixelCohortData$cover))
 
-  ## replace unwanted LCC classes ----------------------------------------------------------------
-  ## replace 34 and 35 and 36 values -- burns and cities -- to a neighbour class *that exists*.
-  ## 1. We need to have a spatial estimate of maxBiomass everywhere there is forest;
-  ## we can't have gaps. The pixels that are 34, 35 or 36 are places for which we don't want
+  ## replace unwanted LCC classes to a neighbour class *that exists*.------------------------------------
+  ## Originally 34/36 (hence the name) values from 2005 LCC, which were burns and cities.
+  ## We need to have a spatial estimate of maxBiomass everywhere there is forest;
+  ## we can't have gaps. The LCC that are unwanted are places for which we don't want
   ## maxBiomass associated with their LCC ... i.e., we don't want a maximum
-  ## biomass associated with 34 and 35 because those classes are transient.
+  ## biomass associated with disturbed forest because those classes are transient.
   ## They will transition to another class before they arrive at a tree maximum biomass.
-  ## So, 34 and 35 should not have estimates of maxBiomass 36 is urban.
-  ## So, we SHOULD remove these pixels from our studies, except if we are doing
-  ## NRV studies (e.g., LandWeb wanted to replace 36 with some forest class) We
-  ## decided that we should not use 34 or 35 in our models of Biomass because the
-  ## only objective of these models is to estimate maxBiomass, so don't use 34 or
-  ## 35 To associate the pixels that were 34 or 35 with a maxBiomass , we need to
-  ## give them a "forest class" that they might "become" after they grow out of
-  ## being 34 or 35. The pixels where there were 34 and 35 nevertheless have
-  ## Biomass estimates in them from KNN and other sources. We leave those as is.
-  if (length(P(sim)$LCCClassesToReplaceNN)) {
+  ## However, we need to give them a "forest class" that they might "become"
+  ## The ecoregion map must be updated to reflect this new class.
+  ##
+
+  NTEMSlcc <- c(0, 20, 31, 32, 33, 40, 50, 80, 81, 100, 210, 220, 230, P(sim)$LCCClassesToReplaceNN)
+  #unclassified, water, snow/ice, rock/rubble, exposed/barren,
+  #bryoids, shrubs, wetland, wetland-treed, herbs, coniferous,
+  #broadleaf, mixedwood, disturbed)
+  if (length(P(sim)$LCCClassesToReplaceNN) & all(na.omit(as.vector(sim$rstLCC)) %in% NTEMSlcc)) {
+
     uwc <- P(sim)$LCCClassesToReplaceNN
 
     message("Replace ", paste(uwc, collapse = ", "),
-            " values -- ", "burns"[any(uwc %in% 34:35)], " and cities"[any(uwc %in% 36)],
-            " -- to a neighbour class *that exists*")
+            " values to a neighbour class *that exists*")
 
-    ## version 1: from before March 2019 - Ceres noticed it created issues with fitting modelCover
-    ## March 2020: seems to be the preferred behaviour?
-    ## June 2020: this leads to ignoring pixels with classes to be converted that have cover > 0
-    # availableCombinations <- unique(pixelCohortData[eval(rmZeroBiomassQuote),
-    # .(speciesCode, initialEcoregionCode, pixelIndex)])
-    ## version 2: Ceres's fix from March 2019 to solve issues with modelCover fitting (?)
-    ## June 2020: Ceres re-activated this so that pixels with B == 0 and cover > 0 could be converted if need be
     availableCombinations <- unique(pixelCohortData[, .(speciesCode, initialEcoregionCode, pixelIndex)])
-    ## version 3: Feb 2020 Eliot's fix that is WRONG - this behaviour is being achieved in convertUnwantedLCC and creates empty tables if done here
-    # availableCombinations <- unique(pixelCohortData[!(lcc %in% uwc),
-    #                                                 .(speciesCode, initialEcoregionCode, pixelIndex)])
+
 
     freqsUpdates <- startFinishLCC <- list()
     lastYrOnNTEMS <- NTEMSfinalYearForLCC(timeout = 10) |> Cache()
 
     for (yr in c(lastYrOnNTEMS, 1984)) {
       freqs <- freq(rstLCCAdj)
-      # freqs <- table(terra::values(rstLCCAdj, mat = FALSE))
       if (freqs$count[freqs$value %in% Par$LCCClassesToReplaceNN ] > 1000) {
         yrChar <- as.character(yr)
         startFinishLCC[[yrChar]] <-
