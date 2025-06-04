@@ -706,12 +706,8 @@ createBiomass_coreInputs <- function(sim) {
   if (length(P(sim)$LCCClassesToReplaceNN) & all(na.omit(as.vector(sim$rstLCC)) %in% NTEMSlcc)) {
 
     uwc <- P(sim)$LCCClassesToReplaceNN
-
-    message("Replace ", paste(uwc, collapse = ", "),
-            " values to a neighbour class *that exists*")
-
+    message("Replace ", paste(uwc, collapse = ", "), " values to a neighbour class *that exists*")
     availableCombinations <- unique(pixelCohortData[, .(speciesCode, initialEcoregionCode, pixelIndex)])
-
 
     freqsUpdates <- startFinishLCC <- list()
     lastYrOnNTEMS <- NTEMSfinalYearForLCC(timeout = 10) |> Cache()
@@ -751,39 +747,17 @@ createBiomass_coreInputs <- function(sim) {
                      paste0(initialEcoregionCode2, "_",
                             paddedFloatToChar(newLcc, ncharToPad))]
         set(pixelTable, NULL, c("newLcc", "initialEcoregionCode2"), NULL)
-        # pixelTable[initialEcoregionCode != initialEcoregionCode2]
         rstLCCAdj[pixelsToRm2] <- NA
       }
+      rm(pixelsToRm2, pixelsToRm3, pixelsToRm4)
     }
-
-    # ecoregionFiles2 <- prepEcoregions(
-    #   ecoregionRst = sim$ecoregionRst,
-    #   ecoregionLayer = sim$ecoregionLayer,
-    #   ecoregionLayerField = P(sim)$ecoregionLayerField,
-    #   rasterToMatchLarge = sim$rasterToMatchLarge,
-    #   rstLCCAdj = rstLCCAdj,
-    #   pixelsToRm = pixelsToRm2,
-    #   cacheTags = c(cacheTags, "prepEcoregionFiles")
-    # ) |>
-    #   Cache()
-    #
-    # pixelTable2 <- makePixelTable(
-    #   speciesLayers = sim$speciesLayers,
-    #   standAgeMap = sim$standAgeMap,
-    #   ecoregionFiles = ecoregionFiles2,
-    #   biomassMap = sim$rawBiomassMap,
-    #   rasterToMatch = sim$rasterToMatchLarge,
-    #   rstLCC = rstLCCAdj
-    # ) |>
-    #   Cache(userTags = c(cacheTags, "pixelTable"), omitArgs = c("userTags"))
-    # pixelTable2[, rasterToMatch := NULL]
 
     ## create initial pixelCohortData table ---------------
     # Might already have cover. in the names
     coverColNames <- colnames(pixelTable)[match(sim$species$species,
                                                  gsub("cover.(.+)", "\\1", colnames(pixelTable)))]
     # coverColNames <- paste0("cover.", coverColNames)
-    # coverColNames <- gsub("cover.(.+)", paste0("cover.", "\\1"), coverColNames)
+
     pixelCohortData <- makeAndCleanInitialCohortData(
       inputDataTable = pixelTable,
       sppColumns = coverColNames,
@@ -975,9 +949,7 @@ createBiomass_coreInputs <- function(sim) {
         .cacheExtra = sumResponse, ## only digest on this
         .specialData = specDat,
         useCloud = useCloud,
-        # useCache = "overwrite",
         cloudFolderID = sim$cloudFolderID,
-        # showSimilar = getOption("reproducible.showSimilar", FALSE),
         userTags = c(modelBiomassTags,
                      paste0("subsetSize:", P(sim)$subsetDataBiomassModel)),
         omitArgs = c("showSimilar", ".specialData", "useCloud", "cloudFolderID", "useCache")
@@ -1070,28 +1042,13 @@ createBiomass_coreInputs <- function(sim) {
                                            modelBiomass = modelBiomass,
                                            successionTimestep = P(sim)$successionTimestep,
                                            currentYear = time(sim))
+
   if (length(P(sim)$LCCClassesToReplaceNN)) {
     assert2(speciesEcoregion, classesToReplace = P(sim)$LCCClassesToReplaceNN)
   }
 
   ## check that all species have maxB/maxANPP
   assertSppMaxBMaxANPP(speciesEcoregion)
-
-  # if (!is.na(P(sim)$.plotInitialTime)) {
-  #   uniqueSpeciesNames <- as.character(unique(speciesEcoregion$speciesCode))
-  #   names(uniqueSpeciesNames) <- uniqueSpeciesNames
-  #   speciesEcoregionTable2 <- copy(speciesEcoregion)
-  #   speciesEcoregionTable2[, ecoregionInt := as.integer(ecoregionGroup)]
-  #   maxB <- raster::stack(lapply(uniqueSpeciesNames, function(sp) {
-  #     rasterizeReduced(speciesEcoregionTable2[speciesCode == sp], ecoregionFiles$ecoregionMap,
-  #                      "maxB", "ecoregionInt")
-  #   }))
-  #   curDev <- dev.cur()
-  #   newDev <- if (!is.null(dev.list())) max(dev.list()) + 1 else 1
-  #   quickPlot::dev(newDev, width = 18, height = 10)
-  #   Plot(maxB, legendRange = c(0, max(maxValue(maxB), na.rm = TRUE)))
-  #   quickPlot::dev(curDev)
-  # }
 
   if (ncell(sim$rasterToMatch_biomassParam) > 3e7) replicate(3, gc())
 
