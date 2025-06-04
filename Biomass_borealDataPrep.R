@@ -858,7 +858,7 @@ createBiomass_coreInputs <- function(sim) {
                              d = pixelTable,
                              e = cohortDataShort))
 
-  # cohortDataShortNoCover <- cohortDataShort[coverPres == 0]
+
   cohortDataShort <- cohortDataShortNoCover[coverPres > 0] # remove places where there is 0 cover
   cohortDataShortNoCover <- cohortDataShortNoCover[is.na(coverPres)][, coverPres := 0]
   ##  will be added back as establishprob = 0
@@ -866,6 +866,18 @@ createBiomass_coreInputs <- function(sim) {
   if (length(P(sim)$LCCClassesToReplaceNN)) {
     assert2(cohortDataShort, classesToReplace = P(sim)$LCCClassesToReplaceNN)
     assert2(cohortDataShortNoCover, classesToReplace = P(sim)$LCCClassesToReplaceNN)
+    #rebuild ecoregionFiles with updated rstLCC
+
+    ecoregionFiles <- prepEcoregions(
+      ecoregionRst = sim$ecoregionRst,
+      ecoregionLayer = sim$ecoregionLayer,
+      ecoregionLayerField = P(sim)$ecoregionLayerField,
+      rasterToMatchLarge = sim$rasterToMatch_biomassParam,
+      rstLCCAdj = rstLCCAdj, #will be different if
+      pixelsToRm = pixelsToRmDueToNAsAndNonForest,
+      cacheTags = c(cacheTags, "prepEcoregionFiles")
+    ) |>
+      Cache()
   }
 
   message(blue("Estimating Species Establishment Probability using P(sim)$coverModel, which is"))
@@ -1043,9 +1055,6 @@ createBiomass_coreInputs <- function(sim) {
   if (any(P(sim)$exportModels %in% c("all", "biomassModel"))) {
     sim$modelBiomass <- modelBiomass
   }
-
-  ## remove logB
-  # cohortDataOnlyForestLCCBiomassSubset[, logB := NULL]
 
   ## create speciesEcoregion ---------------------------------------------
   ## a single line for each combination of ecoregionGroup & speciesCode;
@@ -1340,7 +1349,8 @@ createBiomass_coreInputs <- function(sim) {
   # }
   #
   sim$pixelGroupMap <- makePixelGroupMap(pixelCohortData, sim$rasterToMatch)
-
+  #initialize with disturbed (i.e. empty) pixels as pixelGroup 0
+  sim$pixelGroupMap[is.na(sim$pixelGroupMap[]) & !is.na(sim$ecoregionMap[])] <- 0 #
   ## make sure speciesLayers match RTM (since that's what is used downstream in simulations)
   message(blue("Writing sim$speciesLayers to disk as they are likely no longer needed in RAM"))
 
