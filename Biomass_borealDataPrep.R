@@ -21,7 +21,7 @@ defineModule(sim, list(
                   "merTools", "plyr", "rasterVis", "sf", "terra",
                   "reproducible (>= 2.1.0)",
                   "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-                  "PredictiveEcology/LandR@development (>= 1.1.5.9043)",
+                  "PredictiveEcology/LandR@development (>= 1.1.5.9045)",
                   "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)", ## TODO: update this once merged
                   "PredictiveEcology/pemisc@development"),
   parameters = rbind(
@@ -778,6 +778,14 @@ createBiomass_coreInputs <- function(sim) {
                                         rstLCC = rstLCCAdj,
                                         availableERC_by_Sp = availableCombinations2) |>
       Cache(userTags = c(cacheTags, "newLCCClasses", "stable"))
+
+    #adjust rstLCCAdj so that ecoregionMap will contain the last set of updated LCCClassesToReplaceNN
+    if (!is.null(newLCCClasses$newPossLCC)) {
+      #LandR versions prior to 1.1.5.9045 will not have this
+      rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
+    }
+    rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
+
   } else {
     newLCCClasses <- data.table(pixelIndex = numeric(), ecoregionGroup = numeric())
   }
@@ -1308,6 +1316,9 @@ createBiomass_coreInputs <- function(sim) {
   sim$pixelGroupMap <- makePixelGroupMap(pixelCohortData, sim$rasterToMatch)
   #initialize with disturbed (i.e. empty) pixels as pixelGroup 0
   sim$pixelGroupMap[is.na(sim$pixelGroupMap[]) & !is.na(sim$ecoregionMap[])] <- 0 #
+  assert_that(all(is.na(as.vector(sim$ecoregionMap[])) == is.na(as.vector(sim$pixelGroupMap[]))))
+
+
   ## make sure speciesLayers match RTM (since that's what is used downstream in simulations)
   message(blue("Writing sim$speciesLayers to disk as they are likely no longer needed in RAM"))
 
