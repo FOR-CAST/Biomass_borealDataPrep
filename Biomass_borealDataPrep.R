@@ -728,6 +728,7 @@ createBiomass_coreInputs <- function(sim) {
             userTags = c("rstLCC", yr, "_", currentModule(sim),
                          P(sim)$.studyAreaName, P(sim)$dataYear)
           )
+        pixelTable <- copy(pixelTable) #avoid super annoying warning
         cellsToUpdate <- which(rstLCCAdj[] == Par$LCCClassesToReplaceNN)
         rstLCCAdj[cellsToUpdate] <- startFinishLCC[[yrChar]][cellsToUpdate]
         whUpdate <- match(cellsToUpdate, pixelTable$pixelIndex)
@@ -1455,8 +1456,8 @@ Save <- function(sim) {
     sim$rasterToMatch <- rast(studyArea, res = c(250, 250), vals = 1) |>
       mask(mask = studyArea)
   }
-  
-  if (!suppliedElsewhere("rasterToMatch_biomassParam", sim)) { 
+
+  if (!suppliedElsewhere("rasterToMatch_biomassParam", sim)) {
     if (!is.null(sim$rasterToMatchLarge)) {
       warning("please use rasterToMatch_biomassParam in place of rasterToMatchLarge")
       sim$rasterToMatch_biomassParam <- sim$rasterToMatchLarge
