@@ -714,7 +714,7 @@ createBiomass_coreInputs <- function(sim) {
     lastYrOnNTEMS <- NTEMSfinalYearForLCC(timeout = 10) |> Cache()
 
     for (yr in c(lastYrOnNTEMS, 1984)) {
-      freqs <- freq(rstLCCAdj)
+      freqs <- terra::freq(rstLCCAdj)
       if (freqs$count[freqs$value %in% Par$LCCClassesToReplaceNN ] > 1000) {
         yrChar <- as.character(yr)
         startFinishLCC[[yrChar]] <-
