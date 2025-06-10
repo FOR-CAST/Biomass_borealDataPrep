@@ -469,8 +469,8 @@ createBiomass_coreInputs <- function(sim) {
 
   if (!.compareRas(sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC,
                    sim$speciesLayers, sim$standAgeMap, res = TRUE)) {
-    stop("sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC,
-                   sim$speciesLayers, sim$standAgeMap properties do not match")
+    stop(paste("sim$rasterToMatchLarge, sim$rawBiomassMap, sim$rstLCC",
+               "sim$speciesLayers, sim$standAgeMap properties do not match"))
   }
 
   ## species traits inputs ---------------------------------------
@@ -1406,12 +1406,12 @@ Save <- function(sim) {
   cacheTags <- c(currentModule(sim), "otherFunctions:.inputObjects")
   dPath <- asPath(inputPath(sim), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
-  
+
   ## Study area(s) ------------------------------------------------
   if (!suppliedElsewhere("studyArea", sim)) {
     sim$studyArea <- randomStudyArea(seed = 1234, size = (250^2)*100)  # Jan 2021 we agreed to force user to provide a SA/SAL
   }
-  
+
   if (!suppliedElsewhere("studyArea_biomassParam", sim)) {
     if (is.null(sim$studyAreaLarge)) {
       sim$studyArea_biomassParam <- sim$studyArea
@@ -1420,28 +1420,28 @@ Save <- function(sim) {
       sim$studyArea_biomassParam <- sim$studyAreaLarge
     }
   }
-  
+
   if (is.na(P(sim)$.studyAreaName)) {
     params(sim)[[currentModule(sim)]][[".studyAreaName"]] <- reproducible::studyAreaName(sim$studyArea_biomassParam)
     message("The .studyAreaName is not supplied; derived name from sim$studyArea_biomassParam: ",
             params(sim)[[currentModule(sim)]][[".studyAreaName"]])
   }
-  
+
   studyArea <- sf::st_as_sf(sim$studyArea)
   studyArea_biomassParam <- sf::st_as_sf(sim$studyArea_biomassParam)
-  
+
   ## this is necessary if studyArea and studyArea_biomassParam are multipolygon objects
   if (nrow(studyArea) > 1) {
-    stop("please provide a study area that is not a multipolygon", 
+    stop("please provide a study area that is not a multipolygon",
          "which will incorrectly segment ecoregions. Try `terra::aggregate`")
   }
-  
+
   if (length(st_within(studyArea, studyArea_biomassParam))[[1]] == 0) {
     stop("studyArea is not fully within studyArea_biomassParam.
          Please check the aligment, projection and shapes of these polygons")
   }
   rm(studyArea, studyArea_biomassParam)
-  
+
   if (!suppliedElsewhere("rasterToMatch", sim)) {
     studyArea <- sim$studyArea
     if (!inherits(studyArea, "SpatVector")) {
@@ -1465,8 +1465,8 @@ Save <- function(sim) {
       sim$rasterToMatch_biomassParam <- sim$rasterToMatch
     }
   }
-  
-  
+
+
   ## biomass map
   if (!suppliedElsewhere("rawBiomassMap", sim)) {
     if (P(sim)$dataYear %in% c(2001, 2011)) {
@@ -1474,7 +1474,7 @@ Save <- function(sim) {
     } else {
       stop("'P(sim)$dataYear' must be one of 2001 or 2011")
     }
-    
+
     sim$rawBiomassMap <- prepRawBiomassMap(
       url = biomassURL,
       studyAreaName = P(sim)$.studyAreaName,
@@ -1482,7 +1482,7 @@ Save <- function(sim) {
       to =  sim$rasterToMatch_biomassParam,
       destinationPath = dPath)
   }
-  
+
   ## Land cover raster ------------------------------------------------
   if (!suppliedElsewhere("rstLCC", sim)) {
     sim$rstLCC <- Cache(
@@ -1499,7 +1499,7 @@ Save <- function(sim) {
                    P(sim)$.studyAreaName, P(sim)$dataYear)
     )
   }
-  
+
   ## Ecodistrict ------------------------------------------------
   if (!suppliedElsewhere("ecoregionLayer", sim)) {
     ## Ceres: makePixel table needs same no. pixels for this, RTM rawBiomassMap, LCC.. etc
@@ -1517,7 +1517,7 @@ Save <- function(sim) {
       userTags = c("prepInputsEcoDistrict_SA", currentModule(sim), cacheTags)
     )
   }
-  
+
   if (P(sim)$overrideAgeInFires) {
     if (!suppliedElsewhere("firePerimeters", sim)) {
       sa <- if (is(sim$studyArea_biomassParam, "sf")) {
@@ -1581,23 +1581,23 @@ Save <- function(sim) {
       )
     })
   }
-  
+
   LandR::assertStandAgeMapAttr(sim$standAgeMap)
   sim$imputedPixID <- attr(sim$standAgeMap, "imputedPixID")
-  
+
   ## check parameter consistency across modules
   paramCheckOtherMods(sim, "dataYear", ifSetButDifferent = "warning")
   paramCheckOtherMods(sim, "minCoverThreshold", ifSetButDifferent = "warning")
-  
+
   paramCheckOtherMods(sim, "sppEquivCol", ifSetButDifferent = "error")
   paramCheckOtherMods(sim, "vegLeadingProportion", ifSetButDifferent = "error")
-  
+
   ## Species equivalencies table and associated columns ----------------------------
   ## make sppEquiv table and associated columns, vectors
   ## do not use suppliedElsewhere here as we need the tables to exist (or not)
   ## already (rather than potentially being supplied by a downstream module)
   ## the function checks whether the tables exist internally.
-  
+
   sppOuts <- sppHarmonize(sim$sppEquiv, sim$sppNameVector, P(sim)$sppEquivCol,
                           sim$sppColorVect, P(sim)$vegLeadingProportion, sim$studyArea_biomassParam)
   ## the following may, or may not change inputs
@@ -1605,10 +1605,10 @@ Save <- function(sim) {
   sim$sppNameVector <- sppOuts$sppNameVector
   P(sim, module = currentModule(sim))$sppEquivCol <- sppOuts$sppEquivCol
   sim$sppColorVect <- sppOuts$sppColorVect
-  
+
   ## check again
   paramCheckOtherMods(sim, "sppEquivCol", ifSetButDifferent = "error")
-  
+
   ## Species raster layers -------------------------------------------
   if (!suppliedElsewhere("speciesLayers", sim)) {
     httr::with_config(config = httr::config(ssl_verifypeer = P(sim)$.sslVerify), {
@@ -1625,21 +1625,21 @@ Save <- function(sim) {
                                  userTags = c(cacheTags, "speciesLayers"),
                                  omitArgs = c("userTags"))
     })
-    
+
     ## make sure empty pixels inside study area have 0 cover, instead of NAs.
     ## this can happen when data has NAs instead of 0s and is not merged/overlayed (e.g. CASFRI)
     sim$speciesLayers <- NAcover2zero(sim$speciesLayers, sim$rasterToMatch_biomassParam)
   }
-  
+
   ## 3. species maps
   if (!suppliedElsewhere("speciesTable", sim)) {
     sim$speciesTable <- getSpeciesTable(dPath = dPath, cacheTags = c(cacheTags, "speciesTable"))
   }
-  
+
   if (!suppliedElsewhere("columnsForPixelGroups", sim)) {
     sim$columnsForPixelGroups <- LandR::columnsForPixelGroups()
   }
-  
+
   return(invisible(sim))
 }
 
