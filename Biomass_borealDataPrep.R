@@ -469,7 +469,7 @@ createBiomass_coreInputs <- function(sim) {
 
   if (!.compareRas(sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC,
                    sim$speciesLayers, sim$standAgeMap, res = TRUE)) {
-    stop(paste("sim$rasterToMatchLarge, sim$rawBiomassMap, sim$rstLCC",
+    stop(paste("sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC",
                "sim$speciesLayers, sim$standAgeMap properties do not match"))
   }
 
