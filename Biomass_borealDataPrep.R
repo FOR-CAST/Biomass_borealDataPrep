@@ -1464,24 +1464,25 @@ Save <- function(sim) {
       sim$rasterToMatch_biomassParam <- sim$rasterToMatch
     }
   }
-  
-  
+
+
   ## biomass map
   if (!suppliedElsewhere("rawBiomassMap", sim)) {
-    if (P(sim)$dataYear %in% c(2001, 2011)) {
-      biomassURL <- extractURL("rawBiomassMap") |> gsub("2001", P(sim)$dataYear, x = _)
+    if (P(sim)$dataYear %in% c(2001, 2011, 2020)) {
+      biomassDataYear <- P(sim)$dataYear
     } else {
-      stop("'P(sim)$dataYear' must be one of 2001 or 2011")
+      stop("'P(sim)$dataYear' must be one of 2001, 2011, 2020")
     }
-    
+
     sim$rawBiomassMap <- prepRawBiomassMap(
-      url = biomassURL,
+      dataSource = "KNN",
+      dataYear = biomassDataYear,
       studyAreaName = P(sim)$.studyAreaName,
       cacheTags = cacheTags,
       to =  sim$rasterToMatch_biomassParam,
       destinationPath = dPath)
   }
-  
+
   ## Land cover raster ------------------------------------------------
   if (!suppliedElsewhere("rstLCC", sim)) {
     sim$rstLCC <- Cache(
