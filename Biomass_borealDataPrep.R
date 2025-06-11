@@ -470,8 +470,8 @@ createBiomass_coreInputs <- function(sim) {
 
   if (!.compareRas(sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC,
                    sim$speciesLayers, sim$standAgeMap, res = TRUE)) {
-    stop("sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC,
-                   sim$speciesLayers, sim$standAgeMap properties do not match")
+    stop(paste("sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC",
+               "sim$speciesLayers, sim$standAgeMap properties do not match"))
   }
 
   ## species traits inputs ---------------------------------------
@@ -729,6 +729,7 @@ createBiomass_coreInputs <- function(sim) {
             userTags = c("rstLCC", yr, "_", currentModule(sim),
                          P(sim)$.studyAreaName, P(sim)$dataYear)
           )
+        pixelTable <- copy(pixelTable) #avoid super annoying warning
         cellsToUpdate <- which(rstLCCAdj[] == Par$LCCClassesToReplaceNN)
         rstLCCAdj[cellsToUpdate] <- startFinishLCC[[yrChar]][cellsToUpdate]
         whUpdate <- match(cellsToUpdate, pixelTable$pixelIndex)
