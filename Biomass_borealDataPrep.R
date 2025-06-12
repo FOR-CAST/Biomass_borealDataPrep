@@ -299,11 +299,13 @@ defineModule(sim, list(
                                     "canada-forests-attributes_attributs-forests-canada/",
                                     "2001-attributes_attributs-2001/",
                                     "NFI_MODIS250m_2001_kNN_Structure_Stand_Age_v1.tif")),
-    expectsInput("studyArea", "SpatVector",
-                 desc = paste("Polygon to use as the study area")),
-    expectsInput("studyArea_biomassParam", "SpatVector",
-                 desc = paste("optional larger polygon used for parameter estimation.",
-                              "If larger than `studyArea`, it must fully contain it."))
+    expectsInput("studyArea", "sf",
+                 desc = paste("`sf` polygon or terra `SpatVector` to use as the study area - `nrow` must be one")),
+    expectsInput("studyArea_biomassParam", "sf",
+                 desc = paste("Polygon to use as the parametrisation study area. Must be provided by the user.",
+                              "Note that `studyArea_biomassParam` is only used for parameter estimation, and",
+                              "can be larger than the actual study area used for LandR simulations (e.g,",
+                              "larger than `studyArea` in LandR Biomass_core)."))
   ),
     outputObjects = bindrows(
       createsOutput("biomassMap", "SpatRaster",
