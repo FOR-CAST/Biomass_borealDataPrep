@@ -718,7 +718,8 @@ createBiomass_coreInputs <- function(sim) {
 
     for (yr in c(lastYrOnNTEMS, 1984)) {
       freqs <- freq(rstLCCAdj)
-      if (freqs$count[freqs$value %in% Par$LCCClassesToReplaceNN ] > 1000) {
+      if (length(freqs$value %in% P(sim)$LCCClassesToReplaceNN) > 0 &&
+          freqs$count[freqs$value %in% P(sim)$LCCClassesToReplaceNN] > 1000) {
         yrChar <- as.character(yr)
         startFinishLCC[[yrChar]] <-
           prepInputs_NTEMS_LCC_FAO(
