@@ -753,8 +753,8 @@ createBiomass_coreInputs <- function(sim) {
                             paddedFloatToChar(newLcc, ncharToPad))]
         set(pixelTable, NULL, c("newLcc", "initialEcoregionCode2"), NULL)
         rstLCCAdj[pixelsToRm2] <- NA
+        rm(pixelsToRm2, pixelsToRm3, pixelsToRm4)
       }
-      rm(pixelsToRm2, pixelsToRm3, pixelsToRm4)
     }
 
     ## create initial pixelCohortData table ---------------
