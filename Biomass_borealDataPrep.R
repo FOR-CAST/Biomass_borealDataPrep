@@ -143,8 +143,8 @@ defineModule(sim, list(
                     paste("When assigning `pixelGroup` membership, this defines the resolution of ages that will be considered",
                           "'the same pixelGroup', e.g., if it is 10, then 6 and 14 will be the same")),
     defineParameter("pixelGroupBiomassClass", "numeric", 100, NA, NA,
-                    paste("When assigning pixelGroup membership, this defines the resolution of biomass that will be considered",
-                          "'the same pixelGroup', e.g., if it is 100, then 5160 and 5240 will be the same")),
+                    paste("When assigning `pixelGroup` membership, this defines the resolution of biomass that will be considered",
+                          "'the same `pixelGroup`', e.g., if it is 100, then 5160 and 5240 will be the same")),
     defineParameter("rmImputedPix", "logical", FALSE, NA, NA,
                     "Should `sim$imputedPixID` be removed from the simulation?"),
     defineParameter("speciesUpdateFunction", "list",
@@ -773,15 +773,17 @@ createBiomass_coreInputs <- function(sim) {
       Cache(userTags = c(cacheTags, "pixelCohortData"), omitArgs = c("userTags"))
     assertCohortDataAttr(pixelCohortData)
     pixelCohortData <- Cache(partitionBiomass(x = P(sim)$deciduousCoverDiscount, pixelCohortData))
-    set(pixelCohortData, NULL, "B", asInteger(pixelCohortData$B/P(sim)$pixelGroupBiomassClass) *
+    set(pixelCohortData, NULL, "B", asInteger(pixelCohortData$B / P(sim)$pixelGroupBiomassClass) *
           P(sim)$pixelGroupBiomassClass)
     set(pixelCohortData, NULL, "cover", asInteger(pixelCohortData$cover))
     pixelCohortData <- pixelCohortData[!is.na(pixelCohortData$lcc)]
     availableCombinations2 <- unique(pixelCohortData[, .(speciesCode, initialEcoregionCode, pixelIndex)])
 
-    newLCCClasses <- convertUnwantedLCC(classesToReplace = P(sim)$LCCClassesToReplaceNN,
-                                        rstLCC = rstLCCAdj,
-                                        availableERC_by_Sp = availableCombinations2) |>
+    newLCCClasses <- convertUnwantedLCC(
+      classesToReplace = P(sim)$LCCClassesToReplaceNN,
+      rstLCC = rstLCCAdj,
+      availableERC_by_Sp = availableCombinations2
+    ) |>
       Cache(userTags = c(cacheTags, "newLCCClasses", "stable"))
 
     ## adjust rstLCCAdj so that ecoregionMap will contain the last set of updated LCCClassesToReplaceNN
@@ -790,7 +792,6 @@ createBiomass_coreInputs <- function(sim) {
       rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
     }
     rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
-
   } else {
     newLCCClasses <- data.table(pixelIndex = numeric(), ecoregionGroup = numeric())
   }
