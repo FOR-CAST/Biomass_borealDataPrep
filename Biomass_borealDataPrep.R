@@ -800,7 +800,7 @@ createBiomass_coreInputs <- function(sim) {
   ##   The one without P(sim)$LCCClassesToReplaceNN can be used for statistical estimation, but not the one with
   cohortDataOnlyNonForestLCC <- pixelCohortData[pixelIndex %in% newLCCClasses$pixelIndex]
   cohortDataOnlyNonForestLCC <- merge(newLCCClasses, cohortDataOnlyNonForestLCC, all.x = TRUE,
-                            all.y = FALSE, by = "pixelIndex")
+                                      all.y = FALSE, by = "pixelIndex")
   cohortDataOnlyForestLCC <- pixelCohortData[!pixelIndex %in% newLCCClasses$pixelIndex]
   if (!length(P(sim)$LCCClassesToReplaceNN)) {
     if (!all.equal(cohortDataOnlyForestLCC, pixelCohortData, check.attributes = FALSE))
@@ -831,7 +831,7 @@ createBiomass_coreInputs <- function(sim) {
                       cohortDataOnlyForestLCC[, .(pixelIndex, ecoregionGroup)])
       pixelTable <- tempDT[pixelTable, on = .(pixelIndex)]
 
-      aa <- table(as.character(pixelTable$ecoregionGroup))   ## as.character avoids counting levels that don't exist anymore
+      aa <- table(as.character(pixelTable$ecoregionGroup)) ## as.character avoids counting levels that don't exist anymore
 
       dt1 <- data.table(ecoregionGroup = factor(names(aa)), coverNum = as.integer(unname(aa)))
       allCombos <- expand.grid(ecoregionGroup = dt1$ecoregionGroup, speciesCode = unique(cohortDataShort$speciesCode))
@@ -849,15 +849,15 @@ createBiomass_coreInputs <- function(sim) {
       )
     )
 
-  cohortDataShort <- cohortDataShortNoCover[coverPres > 0] # remove places where there is 0 cover
+  cohortDataShort <- cohortDataShortNoCover[coverPres > 0] ## remove places where there is 0 cover
   cohortDataShortNoCover <- cohortDataShortNoCover[is.na(coverPres)][, coverPres := 0]
   ##  will be added back as establishprob = 0
 
   if (length(P(sim)$LCCClassesToReplaceNN)) {
     assert2(cohortDataShort, classesToReplace = P(sim)$LCCClassesToReplaceNN)
     assert2(cohortDataShortNoCover, classesToReplace = P(sim)$LCCClassesToReplaceNN)
-    #rebuild ecoregionFiles with updated rstLCC
 
+    ## rebuild ecoregionFiles with updated rstLCC
     ecoregionFiles <- prepEcoregions(
       ecoregionRst = sim$ecoregionRst,
       ecoregionLayer = sim$ecoregionLayer,
@@ -931,20 +931,20 @@ createBiomass_coreInputs <- function(sim) {
                                P(sim)$subsetDataAttempts, 1)
   for (tryBiomassDataSubset in 1:maxDataSubsetTries) {
     cohortDataOnlyForestLCCBiomassSubset <- subsetDT(cohortDataOnlyForestLCCBiomass,
-                                                by = c("ecoregionGroup", "speciesCode"),
-                                                doSubset = P(sim)$subsetDataBiomassModel)
+                                                     by = c("ecoregionGroup", "speciesCode"),
+                                                     doSubset = P(sim)$subsetDataBiomassModel)
 
-    ### For Cache -- doesn't need to cache all columns in the data.table -- only the ones in the model
-    ### force parameter values to avoid more checks
-    # If using mixed effect model, see here for good discussion of
-    #  shrinkage https://www.tjmahr.com/plotting-partial-pooling-in-mixed-effects-models/
+    ## For Cache: doesn't need to cache all columns in the data.table; only the ones in the model.
+    ## force parameter values to avoid more checks;
+    ## If using mixed effect model, see here for good discussion of
+    ##  shrinkage https://www.tjmahr.com/plotting-partial-pooling-in-mixed-effects-models/
     message(blue("Estimating biomass using P(sim)$biomassModel as:"), "\n",
             magenta(paste0(format(P(sim)$biomassModel, appendLF = FALSE), collapse = "")))
 
     ## NOTE: we are NOT using logB because the relationship between B~age should be hump-shaped
     ## (or at least capped at high age values). Ideally, we would want a non-linear model
 
-    # Default values of args to modelBiomass -- prior to any attempts to fix
+    ## Default values of args to modelBiomass -- prior to any attempts to fix
     ueg <- .sortDotsUnderscoreFirst(as.character(unique(cohortDataOnlyForestLCCBiomassSubset$ecoregionGroup)))
     specDat <- cohortDataOnlyForestLCCBiomassSubset
     modelFn <- P(sim)$biomassModel
@@ -1108,7 +1108,7 @@ createBiomass_coreInputs <- function(sim) {
     }
 
     ## subset pixels that are in studyArea/rasterToMatch only
-    pixToKeep <- na.omit(as.vector(values(rasterToMatch_biomassParamCropped))) # these are the old indices of RTML
+    pixToKeep <- na.omit(as.vector(values(rasterToMatch_biomassParamCropped))) ## these are the old indices of RTML
     pixelCohortData <- pixelCohortData[pixelIndex %in% pixToKeep]
 
     ## re-do pixelIndex (it now needs to match rasterToMatch)
@@ -1228,7 +1228,7 @@ createBiomass_coreInputs <- function(sim) {
         ## TODO: reassess 2.8x multiplier; it's high, but needed in RoF_shield
         assertthat::assert_that(
           all(inRange(na.omit(young$B), 0, 2.8 * maxRawB / min(sim$species$longevity/maxAgeHighQualityData)))
-        ) # /4 is too strong -- 25 years is a lot of time
+        ) ## /4 is too strong -- 25 years is a lot of time
       } else {
         ## return maxAgeHighQualityData to -1
         message(blue("Simulation start year is lower than oldest fire."))
@@ -1240,7 +1240,7 @@ createBiomass_coreInputs <- function(sim) {
 
   assertthat::assert_that(all(inRange(na.omit(pixelCohortData$B), 0, round(maxRawB, -2)))) # should they all be below the initial biomass map?
 
-  # Fill in any remaining B values that are still NA -- the previous chunk filled in B for young cohorts only
+  ## Fill in any remaining B values that are still NA -- the previous chunk filled in B for young cohorts only
   if (anyNA(pixelCohortData$B)) {
 
     theNAsBiomass <- is.na(pixelCohortData$B)
