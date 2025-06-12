@@ -787,11 +787,13 @@ createBiomass_coreInputs <- function(sim) {
       Cache(userTags = c(cacheTags, "newLCCClasses", "stable"))
 
     ## adjust rstLCCAdj so that ecoregionMap will contain the last set of updated LCCClassesToReplaceNN
-    if (!is.null(newLCCClasses$newPossLCC)) {
-      ## LandR versions prior to 1.1.5.9045 will not have this
+    if (nrow(newLCCClasses)) {
+      if (!is.null(newLCCClasses$newPossLCC)) {
+        ## LandR versions prior to 1.1.5.9045 will not have this
+        rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
+      }
       rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
     }
-    rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
   } else {
     newLCCClasses <- data.table(pixelIndex = numeric(), ecoregionGroup = numeric())
   }
