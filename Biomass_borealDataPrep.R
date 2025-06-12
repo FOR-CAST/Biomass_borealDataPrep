@@ -535,13 +535,15 @@ createBiomass_coreInputs <- function(sim) {
   #                                   X5 = c(rep(0, 4), 1))
 
   ## LANDIS-test table (see source in metadata desc.)
-  sim$sufficientLight <- data.frame(speciesshadetolerance = 1:5,
-                                    X0 = c(rep(1, 4), 0),
-                                    X1 = c(0, rep(1, 3), 0),
-                                    X2 = c(0, 0, rep(1, 3)),
-                                    X3 = c(rep(0, 3), rep(1, 2)),
-                                    X4 = c(rep(0, 4), 1),
-                                    X5 = c(rep(0, 4), 1))
+  sim$sufficientLight <- data.frame(
+    speciesshadetolerance = 1:5,
+    X0 = c(rep(1, 4), 0),
+    X1 = c(0, rep(1, 3), 0),
+    X2 = c(0, 0, rep(1, 3)),
+    X3 = c(rep(0, 3), rep(1, 2)),
+    X4 = c(rep(0, 4), 1),
+    X5 = c(rep(0, 4), 1)
+  )
 
   ## initialEcoregionMap -----------------------------------------
   if (!.compareCRS(sim$studyArea, sim$rasterToMatch)) {
@@ -550,22 +552,26 @@ createBiomass_coreInputs <- function(sim) {
 
   ## Clean pixels for veg. succession model
   ## remove pixels with no species data or non-forested LCC
-  # ELIOT: updated May 7, 2025. The way pixelFateDT works is that it separates the NAs
-  #        from the nonForestedPixels. This next line (nonForestedPixels) does both, confounded.
-  #        Need to separate these steps (NA in specieLayers and nonForest classes)
-  #        Now it is run twice here, then after the printed line about NAs removed
+  ## ELIOT: updated May 7, 2025. The way pixelFateDT works is that it separates the NAs
+  ##        from the nonForestedPixels. This next line (nonForestedPixels) does both, confounded.
+  ##        Need to separate these steps (NA in speciesLayers and nonForest classes)
+  ##        Now it is run twice here, then after the printed line about NAs removed
   pixelsToRmDueToNAs <- nonForestedPixels(sim$speciesLayers, omitNonTreedPixels = FALSE)
   pixelFateDT <- pixelFate(fate = "Total number pixels", runningPixelTotal = ncell(sim$speciesLayers))
   pixelFateDT <- pixelFate(pixelFateDT, "NAs on sim$speciesLayers", sum(pixelsToRmDueToNAs))
   if (P(sim)$omitNonTreedPixels) {
-    if ( sum(!(as.vector(sim$rstLCC[]) %in% P(sim)$forestedLCCClasses)) -
-         tail(pixelFateDT$pixelsRemoved, 1) < 0) browser()
-    pixelFateDT <- pixelFate(pixelFateDT, "Non forested pixels (based on LCC classes)",
-                             sum(!(as.vector(sim$rstLCC[]) %in% P(sim)$forestedLCCClasses)) -
-                               tail(pixelFateDT$pixelsRemoved, 1))
+    checkNonforest <- sum(!(as.vector(sim$rstLCC[]) %in% P(sim)$forestedLCCClasses)) -
+      tail(pixelFateDT$pixelsRemoved, 1)
+    if (checkNonforest < 0) browser() ## TODO: remove browser
+    pixelFateDT <- pixelFate(pixelFateDT, "Non forested pixels (based on LCC classes)", checkNonforest)
   }
-  pixelsToRmDueToNAsAndNonForest <- nonForestedPixels(sim$speciesLayers, P(sim)$omitNonTreedPixels,
-                                  P(sim)$forestedLCCClasses, sim$rstLCC)
+  pixelsToRmDueToNAsAndNonForest <- nonForestedPixels(
+    sim$speciesLayers,
+    P(sim)$omitNonTreedPixels,
+    P(sim)$forestedLCCClasses,
+    sim$rstLCC
+  )
+
   ## The next function will remove the "zero" class on sim$ecoregionRst
   pixelFateDT <- pixelFate(pixelFateDT, "Removing 0 class in sim$ecoregionRst",
                            sum(as.vector(sim$ecoregionRst[])[!pixelsToRmDueToNAsAndNonForest] == 0, na.rm = TRUE))
@@ -573,7 +579,7 @@ createBiomass_coreInputs <- function(sim) {
   rstLCCAdj <- sim$rstLCC
   rstLCCAdj[pixelsToRmDueToNAsAndNonForest] <- NA
 
-  #make initial ecoregionFiles - some of these may have LCC that get replaced
+  ## make initial ecoregionFiles - some of these may have LCC that get replaced
   ecoregionFiles <- prepEcoregions(
     ecoregionRst = sim$ecoregionRst,
     ecoregionLayer = sim$ecoregionLayer,
@@ -586,9 +592,9 @@ createBiomass_coreInputs <- function(sim) {
     Cache()
 
   ## create pixelTable object ------------------------------------
-  #  Round age to pixelGroupAgeClass
-  # Internal data.table is changed; using memoise here causes the internal changes to
-  #   come out to the pixelTable, which is not desired. Turn off memoising for one step
+  ##  Round age to pixelGroupAgeClass
+  ##  Internal data.table is changed; using memoise here causes the internal changes to
+  ##  come out to the pixelTable, which is not desired. Turn off memoising for one step
   opt <- options("reproducible.useMemoise" = FALSE)
   on.exit(try(options(opt), silent = TRUE), add = TRUE)
 
@@ -697,14 +703,12 @@ createBiomass_coreInputs <- function(sim) {
   ## They will transition to another class before they arrive at a tree maximum biomass.
   ## However, we need to give them a "forest class" that they might "become"
   ## The ecoregion map must be updated to reflect this new class.
-  ##
 
   NTEMSlcc <- c(0, 20, 31, 32, 33, 40, 50, 80, 81, 100, 210, 220, 230, P(sim)$LCCClassesToReplaceNN)
-  #unclassified, water, snow/ice, rock/rubble, exposed/barren,
-  #bryoids, shrubs, wetland, wetland-treed, herbs, coniferous,
-  #broadleaf, mixedwood, disturbed)
-  if (length(P(sim)$LCCClassesToReplaceNN) & all(na.omit(as.vector(sim$rstLCC)) %in% NTEMSlcc)) {
-
+  ## unclassified, water, snow/ice, rock/rubble, exposed/barren,
+  ## bryoids, shrubs, wetland, wetland-treed, herbs, coniferous,
+  ## broadleaf, mixedwood, disturbed)
+  if (length(P(sim)$LCCClassesToReplaceNN) && all(na.omit(as.vector(sim$rstLCC)) %in% NTEMSlcc)) {
     uwc <- P(sim)$LCCClassesToReplaceNN
     message("Replace ", paste(uwc, collapse = ", "), " values to a neighbour class *that exists*")
     availableCombinations <- unique(pixelCohortData[, .(speciesCode, initialEcoregionCode, pixelIndex)])
@@ -724,12 +728,10 @@ createBiomass_coreInputs <- function(sim) {
             destinationPath = inputPath(sim),
             overwrite = TRUE
           ) |>
-          Cache(
-            userTags = c("rstLCC", yr, "_", currentModule(sim),
-                         P(sim)$.studyAreaName, P(sim)$dataYear)
-          )
-        pixelTable <- copy(pixelTable) #avoid super annoying warning
-        cellsToUpdate <- which(rstLCCAdj[] == Par$LCCClassesToReplaceNN)
+          Cache(userTags = c("rstLCC", yr, "_", currentModule(sim),
+                             P(sim)$.studyAreaName, P(sim)$dataYear))
+        pixelTable <- copy(pixelTable) ## avoid super annoying warning
+        cellsToUpdate <- which(rstLCCAdj[] == P(sim)$LCCClassesToReplaceNN)
         rstLCCAdj[cellsToUpdate] <- startFinishLCC[[yrChar]][cellsToUpdate]
         whUpdate <- match(cellsToUpdate, pixelTable$pixelIndex)
         pixelTable[whUpdate, newLcc := startFinishLCC[[yrChar]][cellsToUpdate]]
@@ -738,7 +740,8 @@ createBiomass_coreInputs <- function(sim) {
                                          P(sim)$forestedLCCClasses, rstLCCAdj)
         pixelsToRm3 <- which(pixelsToRm2)
         pixelsToRm4 <- na.omit(match(pixelsToRm3, pixelTable$pixelIndex))
-        if (length(pixelsToRm4)) { # are there any new ones that are not forestedLCCClasses
+        if (length(pixelsToRm4)) {
+          ## are there any new ones that are not forestedLCCClasses?
           pixelTable <- pixelTable[-pixelsToRm4]
         }
 
@@ -754,7 +757,7 @@ createBiomass_coreInputs <- function(sim) {
     }
 
     ## create initial pixelCohortData table ---------------
-    # Might already have cover. in the names
+    ## Might already have cover. in the names
     coverColNames <- colnames(pixelTable)[match(sim$species$species,
                                                  gsub("cover.(.+)", "\\1", colnames(pixelTable)))]
     # coverColNames <- paste0("cover.", coverColNames)
@@ -780,9 +783,9 @@ createBiomass_coreInputs <- function(sim) {
                                         availableERC_by_Sp = availableCombinations2) |>
       Cache(userTags = c(cacheTags, "newLCCClasses", "stable"))
 
-    #adjust rstLCCAdj so that ecoregionMap will contain the last set of updated LCCClassesToReplaceNN
+    ## adjust rstLCCAdj so that ecoregionMap will contain the last set of updated LCCClassesToReplaceNN
     if (!is.null(newLCCClasses$newPossLCC)) {
-      #LandR versions prior to 1.1.5.9045 will not have this
+      ## LandR versions prior to 1.1.5.9045 will not have this
       rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
     }
     rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
@@ -835,12 +838,15 @@ createBiomass_coreInputs <- function(sim) {
       dt1 <- dt1[allCombos, on = "ecoregionGroup", nomatch = 0]
       cohortDataShortNoCover <- cohortDataShort[dt1, on = c("ecoregionGroup", "speciesCode"), nomatch = NA]
     })() |>
-    Cache(.functionName = "cohortDataShortNoCover",
-          .cacheExtra = list(a = cohortDataOnlyNonForestLCC[, .(pixelIndex, ecoregionGroup)],
-                             b = cohortDataOnlyForestLCC[, .(pixelIndex, ecoregionGroup)],
-                             d = pixelTable,
-                             e = cohortDataShort))
-
+    Cache(
+      .functionName = "cohortDataShortNoCover",
+      .cacheExtra = list(
+        a = cohortDataOnlyNonForestLCC[, .(pixelIndex, ecoregionGroup)],
+        b = cohortDataOnlyForestLCC[, .(pixelIndex, ecoregionGroup)],
+        d = pixelTable,
+        e = cohortDataShort
+      )
+    )
 
   cohortDataShort <- cohortDataShortNoCover[coverPres > 0] # remove places where there is 0 cover
   cohortDataShortNoCover <- cohortDataShortNoCover[is.na(coverPres)][, coverPres := 0]
@@ -856,7 +862,7 @@ createBiomass_coreInputs <- function(sim) {
       ecoregionLayer = sim$ecoregionLayer,
       ecoregionLayerField = P(sim)$ecoregionLayerField,
       rasterToMatchLarge = sim$rasterToMatch_biomassParam,
-      rstLCCAdj = rstLCCAdj, #will be different if
+      rstLCCAdj = rstLCCAdj,
       pixelsToRm = pixelsToRmDueToNAsAndNonForest,
       cacheTags = c(cacheTags, "prepEcoregionFiles")
     ) |>
