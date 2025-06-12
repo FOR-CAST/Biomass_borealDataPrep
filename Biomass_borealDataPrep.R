@@ -792,7 +792,6 @@ createBiomass_coreInputs <- function(sim) {
         ## LandR versions prior to 1.1.5.9045 will not have this
         rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
       }
-      rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
     }
   } else {
     newLCCClasses <- data.table(pixelIndex = numeric(), ecoregionGroup = numeric())
