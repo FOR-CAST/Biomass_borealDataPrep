@@ -17,7 +17,7 @@ defineModule(sim, list(
   documentation = list("README.txt", "Biomass_borealDataPrep.Rmd"),
   loadOrder = list(after = c("Biomass_speciesData"),
                    before = c("Biomass_core")),
-  reqdPkgs = list("assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2",
+  reqdPkgs = list("archive", "assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2",
                   "merTools", "plyr", "rasterVis", "sf", "terra",
                   "reproducible (>= 2.1.0)",
                   "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
