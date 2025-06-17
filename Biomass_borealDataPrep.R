@@ -17,7 +17,7 @@ defineModule(sim, list(
   documentation = list("README.txt", "Biomass_borealDataPrep.Rmd"),
   loadOrder = list(after = c("Biomass_speciesData"),
                    before = c("Biomass_core")),
-  reqdPkgs = list("assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2",
+  reqdPkgs = list("archive", "assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2",
                   "merTools", "plyr", "rasterVis", "sf", "terra",
                   "reproducible (>= 2.1.0)",
                   "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
@@ -255,7 +255,8 @@ defineModule(sim, list(
     expectsInput("rawBiomassMap", "SpatRaster",
                  desc = paste("total biomass raster layer in study area. Defaults to the Canadian Forestry",
                               "Service, National Forest Inventory, kNN-derived total aboveground biomass map",
-                              "from 2001 (in tonnes/ha), unless 'dataYear' != 2001. See",
+                              "from 2001 (in tonnes/ha), unless 'dataYear' != 2001. Also able to utilize",
+                              "biomass map from SCANFI for the year 2020 or NTEMS from 2015. For KNN, see",
                               "https://open.canada.ca/data/en/dataset/ec9e2659-1c29-4ddb-87a2-6aced147a990",
                               "for metadata."),
                  sourceURL = paste0("https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/",
@@ -1480,14 +1481,15 @@ Save <- function(sim) {
 
   ## biomass map
   if (!suppliedElsewhere("rawBiomassMap", sim)) {
-    if (P(sim)$dataYear %in% c(2001, 2011)) {
-      biomassURL <- extractURL("rawBiomassMap") |> gsub("2001", P(sim)$dataYear, x = _)
+    if (P(sim)$dataYear %in% c(2001, 2011, 2020)) {
+      biomassDataYear <- P(sim)$dataYear
     } else {
-      stop("'P(sim)$dataYear' must be one of 2001 or 2011")
+      stop("'P(sim)$dataYear' must be one of 2001, 2011, 2020")
     }
 
     sim$rawBiomassMap <- prepRawBiomassMap(
-      url = biomassURL,
+      dataSource = "KNN",
+      dataYear = biomassDataYear,
       studyAreaName = P(sim)$.studyAreaName,
       cacheTags = cacheTags,
       to =  sim$rasterToMatch_biomassParam,
