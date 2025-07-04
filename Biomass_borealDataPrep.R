@@ -21,7 +21,7 @@ defineModule(sim, list(
                   "merTools", "plyr", "rasterVis", "sf", "terra",
                   "reproducible (>= 2.1.0)",
                   "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-                  "PredictiveEcology/LandR@development (>= 1.1.5.9045)",
+                  "PredictiveEcology/LandR@development (>= 1.1.5.9048)",
                   "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)", ## TODO: update this once merged
                   "PredictiveEcology/pemisc@development"),
   parameters = rbind(
@@ -1481,15 +1481,13 @@ Save <- function(sim) {
 
   ## biomass map
   if (!suppliedElsewhere("rawBiomassMap", sim)) {
-    if (P(sim)$dataYear %in% c(2001, 2011, 2020)) {
-      biomassDataYear <- P(sim)$dataYear
-    } else {
-      stop("'P(sim)$dataYear' must be one of 2001, 2011, 2020")
+    if (!P(sim)$dataYear %in% c(2001, 2011, 2015, 2020)) {
+        stop("'P(sim)$dataYear' must be one of 2001, 2011, 2015, 2020")
     }
 
     sim$rawBiomassMap <- prepRawBiomassMap(
       dataSource = "KNN",
-      dataYear = biomassDataYear,
+      dataYear = P(sim)$dataYear,
       studyAreaName = P(sim)$.studyAreaName,
       cacheTags = cacheTags,
       to =  sim$rasterToMatch_biomassParam,
@@ -1660,7 +1658,7 @@ Save <- function(sim) {
 #' Probe NTEMS NFI web page to find the final year available
 #'
 #' Starts searching
-#' `paste0("https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_", lastYrOnNTEMS, ".zip")`
+# `paste0("https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_", lastYrOnNTEMS, ".zip")`
 #' at current year (Sys.Date()), and subtract one year, try, subtract a year, try etc.
 #'
 #' @param timeout Numeric, in seconds, for how long to allow a download to happen
@@ -1669,7 +1667,7 @@ NTEMSfinalYearForLCC <- function(timeout = 5) {
   resp <- ''
   lastYrOnNTEMS <- as.integer(format(Sys.Date(), "%Y")) + 1
 
-  while(!is (resp, "try-error")) {
+  while (!is(resp, "try-error")) {
     lastYrOnNTEMS <- lastYrOnNTEMS - 1
     url <- paste0("https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_", lastYrOnNTEMS, ".zip")
     req <- httr2::request(url) |> httr2::req_timeout(timeout)
