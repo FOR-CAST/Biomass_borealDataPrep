@@ -1658,8 +1658,8 @@ Save <- function(sim) {
 #' Probe NTEMS NFI web page to find the final year available
 #'
 #' Starts searching
-# `paste0("https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_", lastYrOnNTEMS, ".zip")`
-#' at current year (Sys.Date()), and subtract one year, try, subtract a year, try etc.
+#' `paste0("https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_", lastYrOnNTEMS, ".zip")`
+#' at current year (`Sys.Date()`), and subtract one year, try, subtract a year, try etc.
 #'
 #' @param timeout Numeric, in seconds, for how long to allow a download to happen
 #'   before interrupting it and declaring, "that worked, use that year".
