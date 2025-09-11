@@ -1293,7 +1293,7 @@ createBiomass_coreInputs <- function(sim) {
   sim$pixelGroupMap <- makePixelGroupMap(pixelCohortData, sim$rasterToMatch)
   #initialize with disturbed (i.e. empty) pixels as pixelGroup 0
   sim$pixelGroupMap[is.na(sim$pixelGroupMap[]) & !is.na(sim$ecoregionMap[])] <- 0 #
-  assert_that(all(is.na(as.vector(sim$ecoregionMap[])) == is.na(as.vector(sim$pixelGroupMap[]))))
+  assert_that(all(is.na(values(mat = FALSE, sim$ecoregionMap)) == is.na(values(mat = FALSE, sim$pixelGroupMap))))
 
 
   ## make sure speciesLayers match RTM (since that's what is used downstream in simulations)
