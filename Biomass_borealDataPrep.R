@@ -747,10 +747,17 @@ createBiomass_coreInputs <- function(sim) {
         }
 
         ncharToPad <- max(nchar(pixelTable$lcc))
+
+        # Eliot added this after many failed assertions WAY below: Sep 5, 2025
+        #   assert_that(all(is.na(values(mat = FALSE, sim$ecoregionMap)) == is.na(values(mat = FALSE, sim$pixelGroupMap))))
+        #   The newLcc
+        pixelTable <- pixelTable[!newLcc %in% 0] # These are pixels that turned to zero i.e., need to be removed
+
         pixelTable[!is.na(newLcc), lcc := newLcc]
         pixelTable[!is.na(newLcc),  initialEcoregionCode :=
                      paste0(initialEcoregionCode2, "_",
                             paddedFloatToChar(newLcc, ncharToPad))]
+
         set(pixelTable, NULL, c("newLcc", "initialEcoregionCode2"), NULL)
         rstLCCAdj[pixelsToRm2] <- NA
         rm(pixelsToRm2, pixelsToRm3, pixelsToRm4)
