@@ -442,32 +442,29 @@ createBiomass_coreInputs <- function(sim) {
   if (!.compareRas(sim$standAgeMap, sim$rasterToMatch_biomassParam, res = TRUE)) {
     ## note that extents may never align if the resolution and projection do not allow for it
     ## this is not working, need to use projectRaster
-    sim$standAgeMap <- Cache(postProcess,
+    sim$standAgeMap <- postProcess(
                              sim$standAgeMap,
                              to = sim$rasterToMatch_biomassParam,
-                             overwrite = TRUE)
+                             overwrite = TRUE) |> Cache(.functionName = "postProcessStandAgeMap")
     attr(sim$standAgeMap, "imputedPixID") <- sim$imputedPixID
   }
 
   if (!.compareRas(sim$rstLCC, sim$rasterToMatch_biomassParam, res = TRUE)) {
-    sim$rstLCC <- Cache(postProcess,
-                        sim$rstLCC,
-                        to = sim$rasterToMatch_biomassParam,
-                        overwrite = TRUE)
+    sim$rstLCC <- postProcess(sim$rstLCC,
+                              to = sim$rasterToMatch_biomassParam,
+                              overwrite = TRUE) |> Cache(.functionName = "postProcessRstLCC")
   }
 
   if (P(sim)$overrideAgeInFires) {
-    sim$firePerimeters <- Cache(postProcess,
-                                sim$firePerimeters,
-                                to = sim$rasterToMatch_biomassParam,
-                                overwrite = TRUE)
+    sim$firePerimeters <- postProcess(sim$firePerimeters,
+                                      to = sim$rasterToMatch_biomassParam,
+                                      overwrite = TRUE) |> Cache(.functionName = "postProcessFirePerimeters")
   }
   # options(opt)
   if (!.compareRas(sim$speciesLayers, sim$rasterToMatch_biomassParam, res = TRUE)) {
-    sim$speciesLayers <- Cache(postProcessTerra,
-                               sim$speciesLayers,
-                               to = sim$rasterToMatch_biomassParam,
-                               overwrite = TRUE)
+    sim$speciesLayers <- postProcessTerra(sim$speciesLayers,
+                                          to = sim$rasterToMatch_biomassParam,
+                                          overwrite = TRUE) |> Cache(.functionName = "postProcessSpeciesLayers")
   }
 
   if (!.compareRas(sim$rasterToMatch_biomassParam, sim$rawBiomassMap, sim$rstLCC,
@@ -479,10 +476,10 @@ createBiomass_coreInputs <- function(sim) {
   ## species traits inputs ---------------------------------------
   message(blue("Prepare 'species' table, i.e., species level traits", Sys.time()))
 
-  sim$species <- Cache(prepSpeciesTable(speciesTable = sim$speciesTable,
-                                        sppEquiv = sim$sppEquiv,
-                                        areas = P(sim)$speciesTableAreas,
-                                        sppEquivCol = P(sim)$sppEquivCol))
+  sim$species <- prepSpeciesTable(speciesTable = sim$speciesTable,
+                                  sppEquiv = sim$sppEquiv,
+                                  areas = P(sim)$speciesTableAreas,
+                                  sppEquivCol = P(sim)$sppEquivCol) |> Cache()
 
   ## override species table values -------------------------------
   if (!is.null(P(sim)$speciesUpdateFunction)) {
@@ -1135,12 +1132,11 @@ createBiomass_coreInputs <- function(sim) {
   }
   ## subset ecoregionFiles$ecoregionMap to smaller area.
 
-  ecoregionFiles$ecoregionMap <- Cache(postProcess,
-                                       x = ecoregionFiles$ecoregionMap,
+  ecoregionFiles$ecoregionMap <- postProcess(x = ecoregionFiles$ecoregionMap,
                                        to = sim$rasterToMatch,
-                                       writeTo = NULL,
-                                       userTags = c(cacheTags, "ecoregionMap"),
-                                       omitArgs = c("userTags"))
+                                       writeTo = NULL) |> Cache(.functionName = "postProcessEcoregionMap",
+                                                                userTags = c(cacheTags, "ecoregionMap"),
+                                                                omitArgs = c("userTags"))
 
   if (is(P(sim)$minRelativeBFunction, "call")) {
     sim$minRelativeB <- eval(P(sim)$minRelativeBFunction)
