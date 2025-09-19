@@ -443,9 +443,11 @@ createBiomass_coreInputs <- function(sim) {
     ## note that extents may never align if the resolution and projection do not allow for it
     ## this is not working, need to use projectRaster
     sim$standAgeMap <- postProcess(
-                             sim$standAgeMap,
-                             to = sim$rasterToMatch_biomassParam,
-                             overwrite = TRUE) |> Cache(.functionName = "postProcessStandAgeMap")
+      sim$standAgeMap,
+      to = sim$rasterToMatch_biomassParam,
+      overwrite = TRUE
+    ) |>
+      Cache(.functionName = "postProcessStandAgeMap")
     attr(sim$standAgeMap, "imputedPixID") <- sim$imputedPixID
   }
 
