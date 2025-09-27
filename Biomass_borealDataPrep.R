@@ -308,8 +308,8 @@ defineModule(sim, list(
                               "can be larger than the actual study area used for LandR simulations (e.g,",
                               "larger than `studyArea` in LandR Biomass_core)."))
   ),
-    outputObjects = bindrows(
-      createsOutput("biomassMap", "SpatRaster",
+  outputObjects = bindrows(
+    createsOutput("biomassMap", "SpatRaster",
                   paste("total biomass raster layer in study area,",
                         "filtered for pixels covered by `cohortData`. Units in $g/m^2$")),
     createsOutput("cohortData", "data.table",
