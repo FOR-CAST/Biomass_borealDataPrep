@@ -10,20 +10,21 @@ defineModule(sim, list(
     person(c("Alex", "M."), "Chubaty", email = "achubaty@for-cast.ca", role = c("aut"))
   ),
   childModules = character(0),
-  version = list(Biomass_borealDataPrep = "1.5.9"),
+  version = list(Biomass_borealDataPrep = "1.5.9.9000"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = list("README.txt", "Biomass_borealDataPrep.Rmd"),
   loadOrder = list(after = c("Biomass_speciesData"),
                    before = c("Biomass_core")),
-  reqdPkgs = list("archive", "assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
-                  "merTools", "plyr", "rasterVis", "sf", "terra",
-                  "reproducible (>= 2.1.0)",
-                  "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-                  "PredictiveEcology/LandR@development (>= 1.1.5.9048)",
-                  "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)", ## TODO: update this once merged
-                  "PredictiveEcology/pemisc@development"),
+  reqdPkgs = list(
+    "archive", "assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
+    "merTools", "plyr", "rasterVis", "sf", "terra",
+    "reproducible (>= 2.1.0)", "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
+    "PredictiveEcology/LandR@development (>= 1.1.5.9058)",
+    "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)",
+    "PredictiveEcology/pemisc@development"
+  ),
   parameters = rbind(
     ## maxB, maxANPP, SEP estimation section ------------------------------------------------
     defineParameter("biomassModel", "call",
@@ -68,13 +69,15 @@ defineModule(sim, list(
     defineParameter("coverPctToBiomassPctModel", "call",
                     quote(glm(I(log(B/100)) ~ logAge * I(log(totalBiomass/100)) * speciesCode * lcc)),
                     NA, NA,
-                    paste("Model to estimate the relationship between % cover and % biomass, referred to as",
-                          "`P(sim)$fitDeciduousCoverDiscount` It is a number between 0 and 1 that translates % cover,",
-                          "as provided in several databases, to % biomass. It is assumed that all hardwoods",
-                          "are equivalent and all softwoods are equivalent and that % cover of hardwoods will",
-                          "be an overesimate of the % biomass of hardwoods. E.g., 30% cover of hardwoods",
-                          "might translate to 20% biomass of hardwoods. The reason this discount exists is",
-                          "because hardwoods in Canada have a much wider canopy than softwoods.")),
+                    paste(
+                      "Model to estimate the relationship between % cover and % biomass, referred to as",
+                      "`P(sim)$fitDeciduousCoverDiscount`. It is a number between 0 and 1 that translates % cover,",
+                      "as provided in several databases, to % biomass. It is assumed that all hardwoods",
+                      "are equivalent and all softwoods are equivalent and that % cover of hardwoods will",
+                      "be an overestimate of the % biomass of hardwoods. E.g., 30% cover of hardwoods",
+                      "might translate to 20% biomass of hardwoods. The reason this discount exists is",
+                      "because hardwoods in Canada have a much wider canopy than softwoods."
+                    )),
     defineParameter("deciduousCoverDiscount", "numeric", 0.8418911, NA, NA,
                     paste("This was estimated with data from NWT on March 18, 2020 and may or may not be universal.",
                           "Will not be used if `P(sim)$fitDeciduousCoverDiscount == TRUE`")),
@@ -82,10 +85,17 @@ defineModule(sim, list(
                     paste("If TRUE, this will re-estimate `P(sim)$fitDeciduousCoverDiscount` This may be unstable and",
                           "is not recommended currently. If `FALSE`, will use the current default")),
     ## -------------------------------------------------------------------------------------------
-    defineParameter("dataYear", "numeric", 2011, NA, NA,
-                    paste("Used to override the default 'sourceURL' of KNN datasets (species cover, stand biomass",
-                          "and stand age), which point to 2001 data, to fetch KNN data for another year. Currently,",
-                          "the only other possible year is 2011. Will also select NTEMS landcover from appropriate year.")),
+    defineParameter("dataSource", "character", "SCANFI", NA, NA,
+                    paste(
+                      "Source for species cover, biomass, age, and landcover data used to initialize cohorts.",
+                      "Currently, only kNN (2001, 2011) and SCANFI (2020) provide all necesarry layers.",
+                      "Mixing multiple datasets requires additonal raster geoprocessing and is not recommended."
+                    )),
+    defineParameter("dataYear", "numeric", 2020, NA, NA,
+                    paste(
+                      "the year for which SCANFI data wil be fetched for use with the module.",
+                      "One of 2000, 2010, or 2020, but note that only 2020 is currently supported." ## TODO
+                    )),
     defineParameter("ecoregionLayerField", "character", NULL, NA, NA,
                     paste("the name of the field used to distinguish ecoregions, if supplying a polygon.",
                           "Defaults to `NULL` and tries to use  'ECODISTRIC' where available (for legacy reasons), or the row numbers of",
@@ -129,7 +139,7 @@ defineModule(sim, list(
                       "The default function uses values from LANDIS-II available at:",
                       paste0("https://github.com/dcyr/LANDIS-II_IA_generalUseFiles/blob/master/",
                              "LandisInputs/BSW/biomass-succession-main-inputs_BSW_Baseline.txt"),
-                      "and applies them to all ecolocations (`ecoregionGroup` codes)"
+                      "and applies them to all ecolocations (`ecoregionGroup` codes)."
                     )),
     defineParameter("omitNonTreedPixels", "logical", TRUE, FALSE, TRUE,
                     "Should this module use only treed pixels, as identified by `P(sim)$forestedLCCClasses`?"),
@@ -170,7 +180,7 @@ defineModule(sim, list(
                     paste("Some of the statistical models take long (at least 30 minutes, likely longer).",
                           "If this is `TRUE`, then it will try to get previous cached runs from googledrive.")),
     defineParameter("vegLeadingProportion", "numeric", 0.8, 0, 1,
-                    desc = "a number that defines whether a species is leading for a given pixel"),
+                    "a number that defines whether a species is leading for a given pixel"),
     defineParameter(".plotInitialTime", "numeric", start(sim), NA, NA,
                     "This is here for backwards compatibility. Please use `.plots`"),
     defineParameter(".plots", "character", NA, NA, NA,
@@ -182,17 +192,21 @@ defineModule(sim, list(
     defineParameter(".saveInterval", "numeric", NA, NA, NA,
                     "This describes the simulation time interval between save events"),
     defineParameter(".seed", "list", NULL, NA, NA,
-                    paste("Named list of seeds to use for each event (names). E.g., `list('init' = 123)` will `set.seed(123)`",
-                          "at the start of the init event and unset it at the end. Defaults to `NULL`, meaning that",
-                          "no seeds will be set")),
+                    paste(
+                      "Named list of seeds to use for each event (names). E.g., `list('init' = 123)` will `set.seed(123)`",
+                      "at the start of the init event and unset it at the end. Defaults to `NULL`, meaning that",
+                      "no seeds will be set"
+                    )),
     defineParameter(".sslVerify", "integer", as.integer(unname(curl::curl_options("^ssl_verifypeer$"))), NA_integer_, NA_integer_,
-                    paste("Passed to `httr::config(ssl_verifypeer = P(sim)$.sslVerify)` when downloading KNN",
-                          "(NFI) datasets. Set to 0L if necessary to bypass checking the SSL certificate (this",
-                          "may be necessary when NFI's website SSL certificate is not correctly configured).")),
+                    paste(
+                      "Passed to `httr::config(ssl_verifypeer = P(sim)$.sslVerify)` when downloading NFI datasets.",
+                      "Set to 0L if necessary to bypass checking the SSL certificate",
+                      "(this may be necessary when NFI's website SSL certificate is not correctly configured)."
+                    )),
     defineParameter(".studyAreaName", "character", NA, NA, NA,
                     "Human-readable name for the study area used. If `NA`, a hash of studyArea will be used."),
     defineParameter(".useCache", "character", c(".inputObjects", "init"), NA, NA,
-                    desc = "Internal. Can be names of events or the whole module name; these will be cached by SpaDES")
+                    "Internal. Can be names of events or the whole module name; these will be cached by SpaDES")
   ),
   inputObjects = bindrows(
     expectsInput("cloudFolderID", "character",
@@ -233,16 +247,18 @@ defineModule(sim, list(
                               " It will be added as an attribute to `sim$standAgeMap`"),
                  sourceURL = NA),
     expectsInput("rstLCC", "SpatRaster",
-                 desc = paste("A land classification map in study area. It must be 'corrected', in the sense that:\n",
-                              "1) Every class must not conflict with any other map in this module\n",
-                              "    (e.g., `speciesLayers` should not have data in LCC classes that are non-treed);\n",
-                              "2) It can have treed and non-treed classes. The non-treed will be removed within this\n",
-                              "    module if `P(sim)$omitNonTreedPixels` is `TRUE`;\n",
-                              "3) It can have transient pixels, such as 'young fire'. These will be converted to a\n",
-                              "    the nearest non-transient class, probabilistically if there is more than 1 nearest\n",
-                              "    neighbour class, based on `P(sim)$LCCClassesToReplaceNN`.\n",
-                              "The default layer used, if not supplied, is Canada national land classification in 2010.",
-                              " The metadata (res, proj, ext, origin) need to match `rasterToMatch_biomassParam`."),
+                 paste(
+                   "A land classification map in study area. It must be 'corrected', in the sense that:\n",
+                   "1) Every class must not conflict with any other map in this module\n",
+                   "    (e.g., `speciesLayers` should not have data in LCC classes that are non-treed);\n",
+                   "2) It can have treed and non-treed classes. The non-treed will be removed within this\n",
+                   "    module if `P(sim)$omitNonTreedPixels` is `TRUE`;\n",
+                   "3) It can have transient pixels, such as 'young fire'. These will be converted to a\n",
+                   "    the nearest non-transient class, probabilistically if there is more than 1 nearest\n",
+                   "    neighbour class, based on `P(sim)$LCCClassesToReplaceNN`.\n",
+                   "The default layer used, if not supplied, is SCANFI-derived data product for 2020 updated to use NTEMS land cover codes.",
+                   "See <https://open.canada.ca/data/en/dataset/18e6a919-53fd-41ce-b4e2-44a9707c52dc> for SCANFI metadata.",
+                   "The metadata (res, proj, ext, origin) need to match `rasterToMatch_biomassParam`."),
                  sourceURL = NA), ## uses P(sim)$rstLCCYear and LandR::prepInputsLCC() defaults
     expectsInput("rasterToMatch", "SpatRaster",
                  desc = paste("A raster of the `studyArea` in the same resolution and projection as `rawBiomassMap`.",
@@ -253,23 +269,19 @@ defineModule(sim, list(
                               "This is the scale used for all *inputs* for use in the simulation.",
                               "If not supplied will be forced to match the *default* `rawBiomassMap`.")),
     expectsInput("rawBiomassMap", "SpatRaster",
-                 desc = paste("total biomass raster layer in study area. Defaults to the Canadian Forestry",
-                              "Service, National Forest Inventory, kNN-derived total aboveground biomass map",
-                              "from 2001 (in tonnes/ha), unless 'dataYear' != 2001. Also able to utilize",
-                              "biomass map from SCANFI for the year 2020 or NTEMS from 2015. For KNN, see",
-                              "https://open.canada.ca/data/en/dataset/ec9e2659-1c29-4ddb-87a2-6aced147a990",
-                              "for metadata."),
-                 sourceURL = paste0("https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/",
-                                    "canada-forests-attributes_attributs-forests-canada/",
-                                    "2001-attributes_attributs-2001/",
-                                    "NFI_MODIS250m_2001_kNN_Structure_Biomass_TotalLiveAboveGround_v1.tif")),
+                 paste(
+                   "total biomass raster layer in study area. Defaults to the Canadian Forestry",
+                   "Service, National Forest Inventory, SCANFI-derived total aboveground biomass map",
+                   "from 2020 (in tonnes/ha), unless `dataYear != 2020`.",
+                   "See <https://open.canada.ca/data/en/dataset/18e6a919-53fd-41ce-b4e2-44a9707c52dc> for metadata."
+                 )),
     expectsInput("speciesLayers", "SpatRaster",
-                 desc = paste("cover percentage raster layers by species in Canada species map.",
-                              "Defaults to the Canadian Forestry Service, National Forest Inventory,",
-                              "kNN-derived species cover maps from 2001 using a cover threshold of 10 -",
-                              "see https://open.canada.ca/data/en/dataset/ec9e2659-1c29-4ddb-87a2-6aced147a990 for metadata"),
-                 sourceURL = paste0("http://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/",
-                                    "canada-forests-attributes_attributs-forests-canada/2001-attributes_attributs-2001/")),
+                 paste(
+                   "cover percentage raster layers by species in Canada species map.",
+                   "Defaults to the Canadian Forestry Service, National Forest Inventory,",
+                   "SCANFI-derived species cover maps from 2020 using a cover threshold of 10 -",
+                   "see <https://open.canada.ca/data/en/dataset/18e6a919-53fd-41ce-b4e2-44a9707c52dc> for metadata"
+                 )),
     expectsInput("speciesTable", "data.table",
                  desc = paste("a table of invariant species traits with the following trait colums:",
                               "'species', 'Area', 'longevity', 'sexualmature', 'shadetolerance',",
@@ -290,23 +302,21 @@ defineModule(sim, list(
                               "the entire `P(sim)$sppEquivCol` column in `sppEquiv`.",
                               "See `LandR::sppEquivalencies_CA`.")),
     expectsInput("standAgeMap", "SpatRaster",
-                 desc =  paste("stand age map in study area. Must have a 'imputedPixID' attribute (a  vector of pixel IDs)",
-                               "indicating which pixels suffered age imputation. If no pixel ages were imputed, please set",
-                               "this attribute to `integer(0)`.",
-                               "Defaults to the Canadian Forestry Service, National Forest Inventory,",
-                               "kNN-derived biomass map from 2001, unless 'dataYear' != 2001.",
-                               "See https://open.canada.ca/data/en/dataset/ec9e2659-1c29-4ddb-87a2-6aced147a990 for metadata"),
-                 sourceURL = paste0("http://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/",
-                                    "canada-forests-attributes_attributs-forests-canada/",
-                                    "2001-attributes_attributs-2001/",
-                                    "NFI_MODIS250m_2001_kNN_Structure_Stand_Age_v1.tif")),
+                 paste(
+                   "stand age map in study area. Must have a 'imputedPixID' attribute (a  vector of pixel IDs)",
+                   "indicating which pixels suffered age imputation. If no pixel ages were imputed, please set",
+                   "this attribute to `integer(0)`.",
+                   "Defaults to the Canadian Forestry Service, National Forest Inventory,",
+                   "SCANFI-derived biomass map from 2020, unless `dataYear != 2020`.",
+                   "See <https://open.canada.ca/data/en/dataset/18e6a919-53fd-41ce-b4e2-44a9707c52dc> for metadata."
+                  )),
     expectsInput("studyArea", "sf",
                  desc = paste("`sf` polygon or terra `SpatVector` to use as the study area - `nrow` must be one")),
     expectsInput("studyArea_biomassParam", "sf",
                  desc = paste("Polygon to use as the parametrisation study area. Must be provided by the user.",
                               "Note that `studyArea_biomassParam` is only used for parameter estimation, and",
-                              "can be larger than the actual study area used for LandR simulations (e.g,",
-                              "larger than `studyArea` in LandR Biomass_core)."))
+                              "can be larger than the actual study area used for LandR simulations",
+                              "(e.g., larger than `studyArea` in LandR `Biomass_core`)."))
   ),
   outputObjects = bindrows(
     createsOutput("biomassMap", "SpatRaster",
@@ -343,9 +353,9 @@ defineModule(sim, list(
                         "fitted biomass model, as defined by `P(sim)$biomassModel`")),
     # createsOutput("rawBiomassMap", "SpatRaster",
     #               paste("total biomass raster layer in study area. Defaults to the Canadian Forestry",
-    #                     "Service, National Forest Inventory, kNN-derived total aboveground biomass map",
-    #                     "(in tonnes/ha) from 2001, unless `dataYear != 2001`.",
-    #                     "See <https://open.canada.ca/data/en/dataset/ec9e2659-1c29-4ddb-87a2-6aced147a990>",
+    #                     "Service, National Forest Inventory, SCANFI-derived total aboveground biomass map",
+    #                     "(in tonnes/ha) from 2020, unless `dataYear != 2020`.",
+    #                     "See <https://open.canada.ca/data/en/dataset/18e6a919-53fd-41ce-b4e2-44a9707c52dc>",
     #                     "for metadata")),
     createsOutput("rstLCC", "SpatRaster",
                   paste("As the input object `rstLCC`, but potentially cropped/projected/masked",
@@ -357,8 +367,8 @@ defineModule(sim, list(
     createsOutput("speciesLayers", "SpatRaster",
                   paste("cover percentage raster layers by species in Canada species map.",
                         "Defaults to the Canadian Forestry Service, National Forest Inventory,",
-                        "kNN-derived species cover maps from 2001 using a cover threshold of 10 -",
-                        "see <https://open.canada.ca/data/en/dataset/ec9e2659-1c29-4ddb-87a2-6aced147a990>",
+                        "SCANFI-derived species cover maps from 2020 using a cover threshold of 10 -",
+                        "see <https://open.canada.ca/data/en/dataset/18e6a919-53fd-41ce-b4e2-44a9707c52dc>",
                         "for metadata.")),
     createsOutput("speciesEcoregion", "data.table",
                   paste("table of spatially-varying species traits (`maxB`, `maxANPP`, `establishprob`),",
@@ -659,8 +669,8 @@ createBiomass_coreInputs <- function(sim) {
 
   ## replace unwanted LCC classes to a neighbour class *that exists*.------------------------------------
   ## Originally 34/36 (hence the name) values from 2005 LCC, which were burns and cities.
-  ## We need to have a spatial estimate of maxBiomass everywhere there is forest;
-  ## we can't have gaps. The LCC that are unwanted are places for which we don't want
+  ## We need to have a spatial estimate of maxBiomass everywhere there is forest; can't have gaps.
+  ## The LCC that are unwanted are places for which we don't want
   ## maxBiomass associated with their LCC ... i.e., we don't want a maximum
   ## biomass associated with disturbed forest because those classes are transient.
   ## They will transition to another class before they arrive at a tree maximum biomass.
@@ -711,9 +721,9 @@ createBiomass_coreInputs <- function(sim) {
 
         ncharToPad <- max(nchar(pixelTable$lcc))
 
-        # Eliot added this after many failed assertions WAY below: Sep 5, 2025
-        #   assert_that(all(is.na(values(mat = FALSE, sim$ecoregionMap)) == is.na(values(mat = FALSE, sim$pixelGroupMap))))
-        #   The newLcc
+        ## Eliot added this after many failed assertions WAY below: Sep 5, 2025
+        ##   assert_that(all(is.na(values(mat = FALSE, sim$ecoregionMap)) == is.na(values(mat = FALSE, sim$pixelGroupMap))))
+        ##   The newLcc
         pixelTable <- pixelTable[!newLcc %in% 0] # These are pixels that turned to zero i.e., need to be removed
 
         pixelTable[!is.na(newLcc), lcc := newLcc]
@@ -1102,11 +1112,16 @@ createBiomass_coreInputs <- function(sim) {
   }
   ## subset ecoregionFiles$ecoregionMap to smaller area.
 
-  ecoregionFiles$ecoregionMap <- postProcess(x = ecoregionFiles$ecoregionMap,
-                                       to = sim$rasterToMatch,
-                                       writeTo = NULL) |> Cache(.functionName = "postProcessEcoregionMap",
-                                                                userTags = c(cacheTags, "ecoregionMap"),
-                                                                omitArgs = c("userTags"))
+  ecoregionFiles$ecoregionMap <- postProcess(
+    x = ecoregionFiles$ecoregionMap,
+    to = sim$rasterToMatch,
+    writeTo = NULL
+  ) |>
+    Cache(
+      .functionName = "postProcessEcoregionMap",
+      userTags = c(cacheTags, "ecoregionMap"),
+      omitArgs = c("userTags")
+    )
 
   if (is(P(sim)$minRelativeBFunction, "call")) {
     sim$minRelativeB <- eval(P(sim)$minRelativeBFunction)
@@ -1385,9 +1400,12 @@ Save <- function(sim) {
   dPath <- asPath(inputPath(sim), 1)
   message(currentModule(sim), ": using dataPath '", dPath, "'.")
 
+  rtm_res <- 240 ## SCANFI is 30m resolution and would be aggregated to this
+
   ## Study area(s) ------------------------------------------------
   if (!suppliedElsewhere("studyArea", sim)) {
-    sim$studyArea <- randomStudyArea(seed = 1234, size = (250^2)*100)  # Jan 2021 we agreed to force user to provide a SA/SAL
+    ## Jan 2021 we agreed to force user to provide a SA/SAL
+    sim$studyArea <- randomStudyArea(seed = 1234, size = (rtm_res^2)*100)
   }
 
   if (!suppliedElsewhere("studyArea_biomassParam", sim)) {
@@ -1426,12 +1444,12 @@ Save <- function(sim) {
       studyArea <- vect(studyArea)
     }
     if (terra::is.lonlat(studyArea)) {
-      #use NTEMS projection - LandR requires projected rasters for dispersal
+      ## use SCANFI projection - LandR requires projected rasters for dispersal
       studyArea <- project(studyArea,
-                           paste0("+proj=lcc +lat_0=49 +lon_0=-95 +lat_1=49 +lat_2=77",
-                                  " +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +type=crs"))
+                           paste("+proj=lcc +lat_0=0 +lon_0=-95 +lat_1=49 +lat_2=77",
+                                 "+x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"))
     }
-    sim$rasterToMatch <- rast(studyArea, res = c(250, 250), vals = 1) |>
+    sim$rasterToMatch <- rast(studyArea, res = c(rtm_res, rtm_res), vals = 1) |>
       mask(mask = studyArea)
   }
 
@@ -1444,26 +1462,26 @@ Save <- function(sim) {
     }
   }
 
-
   ## biomass map
   if (!suppliedElsewhere("rawBiomassMap", sim)) {
-    if (!P(sim)$dataYear %in% c(2001, 2011, 2015, 2020)) {
-        stop("'P(sim)$dataYear' must be one of 2001, 2011, 2015, 2020")
-    }
+    stopifnot(
+      "dataYear must be one of 2000, 2010, 2020" = P(sim)$dataYear %in% c(2000, 2010, 2020)
+    )
 
     sim$rawBiomassMap <- prepRawBiomassMap(
-      dataSource = "KNN",
+      dataSource = P(sim)$dataSource,
       dataYear = P(sim)$dataYear,
-      studyAreaName = P(sim)$.studyAreaName,
-      cacheTags = cacheTags,
       to =  sim$rasterToMatch_biomassParam,
-      destinationPath = dPath)
+      destinationPath = dPath,
+      writeTo = paste0("_", P(sim)$.studyAreaName, "_", P(sim)$dataYear, "_", P(sim)$dataSource) |>
+        .suffix("biomass.tif", suffix = _)
+    )
   }
 
   ## Land cover raster ------------------------------------------------
   if (!suppliedElsewhere("rstLCC", sim)) {
     sim$rstLCC <- Cache(
-      prepInputs_NTEMS_LCC_FAO,
+      prepInputs_SCANFI_LCC_FAO,
       year = P(sim)$dataYear,
       maskTo = sim$studyArea_biomassParam,
       cropTo = sim$rasterToMatch_biomassParam,
@@ -1472,8 +1490,7 @@ Save <- function(sim) {
       destinationPath = dPath,
       overwrite = TRUE,
       writeTo = .suffix("rstLCC.tif", paste0("_", P(sim)$.studyAreaName, "_", P(sim)$dataYear)),
-      userTags = c("rstLCC", currentModule(sim),
-                   P(sim)$.studyAreaName, P(sim)$dataYear)
+      userTags = c("rstLCC", currentModule(sim), P(sim)$.studyAreaName, P(sim)$dataYear)
     )
   }
 
@@ -1526,22 +1543,21 @@ Save <- function(sim) {
 
   ## Stand age map ------------------------------------------------
   if (!suppliedElsewhere("standAgeMap", sim)) {
-    if (P(sim)$dataYear == 2001) {
-      ageURL <- extractURL("standAgeMap")
-    } else if (P(sim)$dataYear == 2011) {
-      ageURL <- extractURL("standAgeMap") |> gsub("2001", "2011", x = _)
-    } else {
-      stop("'P(sim)$dataYear' must be 2001 OR 2011")
-    }
     sa <- if (is(sim$studyArea_biomassParam, "sf")) {
-      aggregate(sim$studyArea_biomassParam, list(rep(1, nrow(sim$studyArea_biomassParam))),
-                FUN = function(x) x)
+      aggregate(
+        sim$studyArea_biomassParam,
+        list(rep(1, nrow(sim$studyArea_biomassParam))),
+        FUN = function(x) x
+      )
     } else {
       aggregate(sim$studyArea_biomassParam)
     }
+
     httr::with_config(config = httr::config(ssl_verifypeer = P(sim)$.sslVerify), {
       sim$standAgeMap <- Cache(
         LandR::prepInputsStandAgeMap,
+        dataSource = P(sim)$dataSource,
+        dataYear = P(sim)$dataYear,
         ageFun = getOption("reproducible.rasterRead", "terra::rast"), ## backwards compatible default
         destinationPath = dPath,
         ageURL = ageURL,
@@ -1589,7 +1605,7 @@ Save <- function(sim) {
   ## Species raster layers -------------------------------------------
   if (!suppliedElsewhere("speciesLayers", sim)) {
     httr::with_config(config = httr::config(ssl_verifypeer = P(sim)$.sslVerify), {
-      sim$speciesLayers <- Cache(prepSpeciesLayers_KNN,
+      sim$speciesLayers <- Cache(prepSpeciesLayers_SCANFI,
                                  destinationPath = dPath,
                                  outputPath = dPath,
                                  studyArea = sim$studyArea_biomassParam,
@@ -1620,7 +1636,6 @@ Save <- function(sim) {
   return(invisible(sim))
 }
 
-
 #' Probe NTEMS NFI web page to find the final year available
 #'
 #' Starts searching
@@ -1630,12 +1645,16 @@ Save <- function(sim) {
 #' @param timeout Numeric, in seconds, for how long to allow a download to happen
 #'   before interrupting it and declaring, "that worked, use that year".
 NTEMSfinalYearForLCC <- function(timeout = 5) {
-  resp <- ''
+  resp <- ""
   lastYrOnNTEMS <- as.integer(format(Sys.Date(), "%Y")) + 1
 
   while (!is(resp, "try-error")) {
     lastYrOnNTEMS <- lastYrOnNTEMS - 1
-    url <- paste0("https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_", lastYrOnNTEMS, ".zip")
+    url <- paste0(
+      "https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_",
+      lastYrOnNTEMS,
+      ".zip"
+    )
     req <- httr2::request(url) |> httr2::req_timeout(timeout)
     resp <- try(httr2::req_perform(req), silent = TRUE)
   }
