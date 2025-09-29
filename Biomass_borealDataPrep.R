@@ -677,7 +677,7 @@ createBiomass_coreInputs <- function(sim) {
   ## However, we need to give them a "forest class" that they might "become"
   ## The ecoregion map must be updated to reflect this new class.
 
-  NTEMSlcc <- c(0, 20, 31, 32, 33, 40, 50, 80, 81, 100, 210, 220, 230, P(sim)$LCCClassesToReplaceNN)
+  NTEMSlcc <- c(0, 20, 30, 31, 32, 33, 40, 50, 80, 81, 100, 210, 220, 230, P(sim)$LCCClassesToReplaceNN)
   ## unclassified, water, snow/ice, rock/rubble, exposed/barren,
   ## bryoids, shrubs, wetland, wetland-treed, herbs, coniferous,
   ## broadleaf, mixedwood, disturbed)

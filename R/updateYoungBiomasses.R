@@ -187,11 +187,11 @@ spinUpPartial <- function(pixelCohortData, speciesEcoregion, maxAge,
     moduleNameAndBranch <- paste0("PredictiveEcology/Biomass_core@development (>= ", bcVersion, ")")
     modules <- Require::extractPkgName(moduleNameAndBranch)
     paths$modulePath <- file.path(submodulePath, "Biomass_core")
-    getModule(moduleNameAndBranch, modulePath = paths$modulePath, overwrite = TRUE) # will only overwrite if wrong version
+    getModule(moduleNameAndBranch, modulePath = paths$modulePath, overwrite = TRUE) ## will only overwrite if wrong version
   } else {
     modules <- "Biomass_core"
   }
-  
+
   outputs <- data.frame(expand.grid(objectName = "cohortData",
                                     saveTime = unique(seq(times$start, times$end, by = 1)),
                                     eventPriority = 1, fun = "qs::qsave",
