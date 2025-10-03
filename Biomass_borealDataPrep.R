@@ -21,7 +21,7 @@ defineModule(sim, list(
                   "merTools", "plyr", "rasterVis", "sf", "terra",
                   "reproducible (>= 2.1.0)",
                   "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-                  "PredictiveEcology/LandR@development (>= 1.1.5.9057)",
+                  "PredictiveEcology/LandR@development (>= 1.1.5.9058)",
                   "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)", ## TODO: update this once merged
                   "PredictiveEcology/pemisc@development"),
   parameters = rbind(
@@ -86,7 +86,8 @@ defineModule(sim, list(
                     paste("Determines whether cohort ages are constrained by species longevity.", 
                           "If set to NA, no adjustment is applied. Otherwise, cohort ages are capped at", 
                           "`P(sim)$adjustAgeToLongevity * longevity`. Any cohort age exceeding this threshold", 
-                          "is reduced to the maximum allowed value.")),
+                          "is reduced to the maximum allowed value. If running in old-growth forests, consider setting",
+                          "`P(sim)$adjustAgeToLongevity` = 0.8.")),
     defineParameter("dataYear", "numeric", 2011, NA, NA,
                     paste("Used to override the default 'sourceURL' of KNN datasets (species cover, stand biomass",
                           "and stand age), which point to 2001 data, to fetch KNN data for another year. Currently,",
@@ -1216,11 +1217,11 @@ createBiomass_coreInputs <- function(sim) {
   
   ## If needed, correct ages to be lower than longevity
   if (!is.na(P(sim)$adjustAgeToLongevity)){
-    pixelCohortData <- Cache(adjustAgeToLongevity,
-                             pixelCohortData = pixelCohortData,
-                             longevity = sim$species,
-                             adjustmentFactor = P(sim)$adjustAgeToLongevity,
-                             userTags = c(cacheTags, "adjustAgeToLongevity"))
+    pixelCohortData <- adjustAgeToLongevity(
+      pixelCohortData = pixelCohortData,
+      longevity = sim$species,
+      adjustmentFactor = P(sim)$adjustAgeToLongevity
+    )
   }
 
   assertthat::assert_that(all(inRange(na.omit(pixelCohortData$B), 0, round(maxRawB, -2)))) # should they all be below the initial biomass map?
