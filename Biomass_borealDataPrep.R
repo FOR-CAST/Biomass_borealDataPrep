@@ -1217,8 +1217,8 @@ createBiomass_coreInputs <- function(sim) {
         ) ## /4 is too strong -- 25 years is a lot of time
       } else {
         ## return maxAgeHighQualityData to -1
-        message(blue("Simulation start year is lower than oldest fire."))
-        message(blue("B values will NOT be re-estimated inside fire perimeters"))
+        message(cli::col_blue("Simulation start year is lower than oldest fire."))
+        message(cli::col_blue("B values will NOT be re-estimated inside fire perimeters"))
         maxAgeHighQualityData <- -1
       }
     }
@@ -1228,7 +1228,6 @@ createBiomass_coreInputs <- function(sim) {
 
   ## Fill in any remaining B values that are still NA -- the previous chunk filled in B for young cohorts only
   if (anyNA(pixelCohortData$B)) {
-
     theNAsBiomass <- is.na(pixelCohortData$B)
     message(blue(" -- ", sum(theNAsBiomass),"cohort(s) has NA for Biomass: being replaced with model-derived estimates"))
     set(pixelCohortData, which(theNAsBiomass), "B",
