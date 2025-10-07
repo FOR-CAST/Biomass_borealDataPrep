@@ -531,7 +531,7 @@ createBiomass_coreInputs <- function(sim) {
             Please check the species list and traits table")
   }
 
-  ## filter table in case sppEquiv has more species tahn those being modelled
+  ## filter table in case sppEquiv has more species than those being modelled
   sim$species <- sim$species[species %in% names(sim$speciesLayers)]
 
   ### make table of light shade tolerance  #######################
@@ -622,7 +622,7 @@ createBiomass_coreInputs <- function(sim) {
   options(opt)
   pixelTable[, rasterToMatch := NULL]
 
-  ## create initial pixelCohortData table ---------------
+  ## create initial pixelCohortData table ----------------------------------------------------------
   coverColNames <- paste0("cover.", sim$species$species)
   pixelCohortData <- makeAndCleanInitialCohortData(
     inputDataTable = pixelTable,
@@ -658,8 +658,8 @@ createBiomass_coreInputs <- function(sim) {
                  round(P(sim)$deciduousCoverDiscount, 3)))
   }
 
-  # Cache here, uses the previously digested object that was used to create the pixelCohortData; it hasn't
-  #   changed in the code above since its creation just above
+  ## Cache here, uses the previously digested object that was used to create the pixelCohortData; it hasn't
+  ##   changed in the code above since its creation just above
   pixelCohortData <- partitionBiomass(x = P(sim)$deciduousCoverDiscount, pixelCohortData) |>
     Cache(omitArgs = "pixelCohortData", .cacheExtra = attr(pixelCohortData, "tags"))
 
@@ -1228,7 +1228,6 @@ createBiomass_coreInputs <- function(sim) {
 
   ## Fill in any remaining B values that are still NA -- the previous chunk filled in B for young cohorts only
   if (anyNA(pixelCohortData$B)) {
-
     theNAsBiomass <- is.na(pixelCohortData$B)
     message(blue(" -- ", sum(theNAsBiomass),"cohort(s) has NA for Biomass: being replaced with model-derived estimates"))
     set(pixelCohortData, which(theNAsBiomass), "B",
