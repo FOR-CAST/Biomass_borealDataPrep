@@ -1645,7 +1645,7 @@ Save <- function(sim) {
   ## Species raster layers -------------------------------------------
   if (!suppliedElsewhere("speciesLayers", sim)) {
     httr::with_config(config = httr::config(ssl_verifypeer = P(sim)$.sslVerify), {
-      sim$speciesLayers <- Cache(prepSpeciesLayers_SCANFI,
+      sim$speciesLayers <- prepSpeciesLayers_SCANFI(
                                  destinationPath = dPath,
                                  outputPath = dPath,
                                  studyArea = sim$studyArea_biomassParam,
@@ -1654,9 +1654,10 @@ Save <- function(sim) {
                                  sppEquiv = sim$sppEquiv,
                                  sppEquivCol = P(sim)$sppEquivCol,
                                  thresh = 10,
-                                 year = P(sim)$dataYear,
-                                 userTags = c(cacheTags, "speciesLayers"),
-                                 omitArgs = c("userTags"))
+                                 year = P(sim)$dataYear) |>
+        Cache(userTags = c(cacheTags, "speciesLayers"),
+              .functionName = paste0("prepSpeciesLayers_SCANFI_", P(sim)$.studyAreaName),
+              omitArgs = c("userTags"))
     })
 
     ## make sure empty pixels inside study area have 0 cover, instead of NAs.
