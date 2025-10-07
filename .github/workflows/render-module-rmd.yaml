@@ -16,7 +16,6 @@ name: Render module Rmd
 
 jobs:
   render:
-    if: "!contains(github.event.commits[0].message, '[skip-ci]')"
     name: Render module Rmd
     runs-on: ubuntu-latest
 
