@@ -634,6 +634,48 @@ createBiomass_coreInputs <- function(sim) {
     Cache(userTags = c(cacheTags, "pixelCohortData"))
   assertCohortDataAttr(pixelCohortData)
 
+  ## adjust longevity based on age distributions per species
+  # browser() ## add age-longevity adjustments (PR#96)
+  adjLongevityBySpecies <- pixelCohortData[, .(longevity_new = asInteger(quantile(age, 0.99) * 1.3)), by = "speciesCode"]
+
+  sim$species <- sim$species[, speciesCode := species][adjLongevityBySpecies, on = "speciesCode"]
+  setnames(sim$species, "longevity", "longevity_orig")
+  setnames(sim$species, "longevity_new", "longevity")
+
+  longevity <- sim$species
+  longevity$lty_orig <- factor(2, levels = 2, labels = "Longevity Original")
+  longevity$lty_adj <- factor(3, levels = 3, labels = "Longevity Adjusted")
+
+  ageAdjustmentDF <- data.frame(
+    speciesCode = pixelCohortData$speciesCode,
+    age = pixelCohortData$age,
+    processed = "Original"
+  )
+  adjPixelCohortData <- adjustAgeToLongevity(
+    pixelCohortData = pixelCohortData,
+    longevity = sim$species,
+    adjustmentFactor = 0.9 ## TODO: use module parameter (0.9 default)
+  )
+  ageAdjustmentDF <- rbind(
+    ageAdjustmentDF,
+    data.frame(
+      speciesCode = pixelCohortData$speciesCode,
+      age = adjPixelCohortData$age,
+      processed = "Adjusted"
+    )
+  )
+
+  ## TODO: put this into a plotting fun and use Plots()
+  ggplot(ageAdjustmentDF, aes(x = age, fill = processed)) +
+    geom_histogram(alpha = 0.5, position = position_identity()) +
+    geom_vline(data = longevity, aes(xintercept = longevity_orig, linetype = lty_orig)) +
+    geom_vline(data = longevity, aes(xintercept = longevity), linetype = 3) +
+    facet_wrap( ~ species, nrow = 2, scales = "free") +
+    theme_bw() +
+    scale_linetype_manual(name = NULL, values = "dashed") +
+    labs(y = "Number of cohorts", x = "Age", fill = NULL)
+
+  ## pixelFateDT
   sim$imputedPixID <- unique(c(sim$imputedPixID, attr(pixelCohortData, "imputedPixID")))
   pixelFateDT <- pixelFate(pixelFateDT, "makeAndCleanInitialCohortData rm cover < minThreshold",
                            tail(pixelFateDT$runningPixelTotal, 1) -
