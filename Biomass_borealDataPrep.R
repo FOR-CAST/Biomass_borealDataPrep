@@ -21,7 +21,7 @@ defineModule(sim, list(
     "archive", "assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
     "merTools", "plyr", "rasterVis", "sf", "terra",
     "reproducible (>= 2.1.0)", "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-    "PredictiveEcology/LandR@development (>= 1.1.5.9061)",
+    "PredictiveEcology/LandR@development (>= 1.1.5.9063)",
     "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)",
     "PredictiveEcology/pemisc@development"
   ),
