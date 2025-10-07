@@ -538,7 +538,7 @@ createBiomass_coreInputs <- function(sim) {
             Please check the species list and traits table")
   }
 
-  ## filter table in case sppEquiv has more species tahn those being modelled
+  ## filter table in case sppEquiv has more species than those being modelled
   sim$species <- sim$species[species %in% names(sim$speciesLayers)]
 
   ### make table of light shade tolerance  #######################
@@ -629,7 +629,7 @@ createBiomass_coreInputs <- function(sim) {
   options(opt)
   pixelTable[, rasterToMatch := NULL]
 
-  ## create initial pixelCohortData table ---------------
+  ## create initial pixelCohortData table ----------------------------------------------------------
   coverColNames <- paste0("cover.", sim$species$species)
   pixelCohortData <- makeAndCleanInitialCohortData(
     inputDataTable = pixelTable,
@@ -641,6 +641,48 @@ createBiomass_coreInputs <- function(sim) {
     Cache(userTags = c(cacheTags, "pixelCohortData"))
   assertCohortDataAttr(pixelCohortData)
 
+  ## adjust longevity based on age distributions per species
+  # browser() ## add age-longevity adjustments (PR#96)
+  adjLongevityBySpecies <- pixelCohortData[, .(longevity_new = asInteger(quantile(age, 0.99) * 1.3)), by = "speciesCode"]
+
+  sim$species <- sim$species[, speciesCode := species][adjLongevityBySpecies, on = "speciesCode"]
+  setnames(sim$species, "longevity", "longevity_orig")
+  setnames(sim$species, "longevity_new", "longevity")
+
+  longevity <- sim$species
+  longevity$lty_orig <- factor(2, levels = 2, labels = "Longevity Original")
+  longevity$lty_adj <- factor(3, levels = 3, labels = "Longevity Adjusted")
+
+  ageAdjustmentDF <- data.frame(
+    speciesCode = pixelCohortData$speciesCode,
+    age = pixelCohortData$age,
+    processed = "Original"
+  )
+  adjPixelCohortData <- adjustAgeToLongevity(
+    pixelCohortData = pixelCohortData,
+    longevity = sim$species,
+    adjustmentFactor = 0.9 ## TODO: use module parameter (0.9 default)
+  )
+  ageAdjustmentDF <- rbind(
+    ageAdjustmentDF,
+    data.frame(
+      speciesCode = pixelCohortData$speciesCode,
+      age = adjPixelCohortData$age,
+      processed = "Adjusted"
+    )
+  )
+
+  ## TODO: put this into a plotting fun and use Plots()
+  ggplot(ageAdjustmentDF, aes(x = age, fill = processed)) +
+    geom_histogram(alpha = 0.5, position = position_identity()) +
+    geom_vline(data = longevity, aes(xintercept = longevity_orig, linetype = lty_orig)) +
+    geom_vline(data = longevity, aes(xintercept = longevity), linetype = 3) +
+    facet_wrap( ~ species, nrow = 2, scales = "free") +
+    theme_bw() +
+    scale_linetype_manual(name = NULL, values = "dashed") +
+    labs(y = "Number of cohorts", x = "Age", fill = NULL)
+
+  ## pixelFateDT
   sim$imputedPixID <- unique(c(sim$imputedPixID, attr(pixelCohortData, "imputedPixID")))
   pixelFateDT <- pixelFate(pixelFateDT, "makeAndCleanInitialCohortData rm cover < minThreshold",
                            tail(pixelFateDT$runningPixelTotal, 1) -
@@ -665,8 +707,8 @@ createBiomass_coreInputs <- function(sim) {
                  round(P(sim)$deciduousCoverDiscount, 3)))
   }
 
-  # Cache here, uses the previously digested object that was used to create the pixelCohortData; it hasn't
-  #   changed in the code above since its creation just above
+  ## Cache here, uses the previously digested object that was used to create the pixelCohortData; it hasn't
+  ##   changed in the code above since its creation just above
   pixelCohortData <- partitionBiomass(x = P(sim)$deciduousCoverDiscount, pixelCohortData) |>
     Cache(omitArgs = "pixelCohortData", .cacheExtra = attr(pixelCohortData, "tags"))
 
@@ -1224,8 +1266,8 @@ createBiomass_coreInputs <- function(sim) {
         ) ## /4 is too strong -- 25 years is a lot of time
       } else {
         ## return maxAgeHighQualityData to -1
-        message(blue("Simulation start year is lower than oldest fire."))
-        message(blue("B values will NOT be re-estimated inside fire perimeters"))
+        message(cli::col_blue("Simulation start year is lower than oldest fire."))
+        message(cli::col_blue("B values will NOT be re-estimated inside fire perimeters"))
         maxAgeHighQualityData <- -1
       }
     }
@@ -1261,7 +1303,6 @@ createBiomass_coreInputs <- function(sim) {
 
   ## Fill in any remaining B values that are still NA -- the previous chunk filled in B for young cohorts only
   if (anyNA(pixelCohortData$B)) {
-
     theNAsBiomass <- is.na(pixelCohortData$B)
     message(blue(" -- ", sum(theNAsBiomass),"cohort(s) has NA for Biomass: being replaced with model-derived estimates"))
     set(pixelCohortData, which(theNAsBiomass), "B",
@@ -1593,7 +1634,6 @@ Save <- function(sim) {
         dataYear = P(sim)$dataYear,
         ageFun = getOption("reproducible.rasterRead", "terra::rast"), ## backwards compatible default
         destinationPath = dPath,
-        ageURL = ageURL,
         rasterToMatch = sim$rasterToMatch_biomassParam,
         # writeTo = .suffix("standAgeMap.tif", paste0("_", P(sim)$.studyAreaName)),
         overwrite = TRUE,
