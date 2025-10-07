@@ -17,15 +17,7 @@ defineModule(sim, list(
   documentation = list("README.txt", "Biomass_borealDataPrep.Rmd"),
   loadOrder = list(after = c("Biomass_speciesData"),
                    before = c("Biomass_core")),
-<<<<<<< HEAD
-  reqdPkgs = list("archive", "assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
-                  "merTools", "plyr", "rasterVis", "sf", "terra",
-                  "reproducible (>= 2.1.0)",
-                  "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-                  "PredictiveEcology/LandR@development (>= 1.1.5.9060)",
-                  "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)", ## TODO: update this once merged
-                  "PredictiveEcology/pemisc@development"),
-=======
+
   reqdPkgs = list(
     "archive", "assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
     "merTools", "plyr", "rasterVis", "sf", "terra",
@@ -34,7 +26,6 @@ defineModule(sim, list(
     "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)",
     "PredictiveEcology/pemisc@development"
   ),
->>>>>>> development
   parameters = rbind(
     ## maxB, maxANPP, SEP estimation section ------------------------------------------------
     defineParameter("biomassModel", "call",
@@ -95,18 +86,12 @@ defineModule(sim, list(
                     paste("If TRUE, this will re-estimate `P(sim)$fitDeciduousCoverDiscount` This may be unstable and",
                           "is not recommended currently. If `FALSE`, will use the current default")),
     ## -------------------------------------------------------------------------------------------
-<<<<<<< HEAD
     defineParameter("adjustAgeToLongevity", "numeric", NA, 0.5, 1,
                     paste("Determines whether cohort ages are constrained by species longevity.", 
                           "If set to NA, no adjustment is applied. Otherwise, cohort ages are capped at", 
                           "`P(sim)$adjustAgeToLongevity * longevity`. Any cohort age exceeding this threshold", 
                           "is reduced to the maximum allowed value. If running in old-growth forests, consider setting",
                           "`P(sim)$adjustAgeToLongevity` = 0.8.")),
-    defineParameter("dataYear", "numeric", 2011, NA, NA,
-                    paste("Used to override the default 'sourceURL' of KNN datasets (species cover, stand biomass",
-                          "and stand age), which point to 2001 data, to fetch KNN data for another year. Currently,",
-                          "the only other possible year is 2011. Will also select NTEMS landcover from appropriate year.")),
-=======
     defineParameter("dataSource", "character", "SCANFI", NA, NA,
                     paste(
                       "Source for species cover, biomass, age, and landcover data used to initialize cohorts.",
@@ -118,7 +103,6 @@ defineModule(sim, list(
                       "the year for which SCANFI data wil be fetched for use with the module.",
                       "One of 2000, 2010, or 2020, but note that only 2020 is currently supported." ## TODO
                     )),
->>>>>>> development
     defineParameter("ecoregionLayerField", "character", NULL, NA, NA,
                     paste("the name of the field used to distinguish ecoregions, if supplying a polygon.",
                           "Defaults to `NULL` and tries to use  'ECODISTRIC' where available (for legacy reasons), or the row numbers of",
