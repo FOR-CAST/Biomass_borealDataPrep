@@ -1217,10 +1217,27 @@ createBiomass_coreInputs <- function(sim) {
   
   ## If needed, correct ages to be lower than longevity
   if (!is.na(P(sim)$adjustAgeToLongevity)){
+    ageAdjustmentDF <- data.frame(speciesCode = pixelCohortData$speciesCode,
+                                  age = pixelCohortData$age,
+                                  processed = "Original")
     pixelCohortData <- adjustAgeToLongevity(
       pixelCohortData = pixelCohortData,
       longevity = sim$species,
       adjustmentFactor = P(sim)$adjustAgeToLongevity
+    )
+    ageAdjustmentDF <- rbind(
+      ageAdjustmentDF,
+      data.frame(
+        speciesCode = pixelCohortData$speciesCode,
+        age = pixelCohortData$age,
+        processed = "Adjusted"
+      )
+    )
+    Plots(
+      ageAdjustmentDF,
+      fn = ageAdjustmentPlot,
+      filename = "ageAdjustment",
+      longevity = sim$species,
     )
   }
 
