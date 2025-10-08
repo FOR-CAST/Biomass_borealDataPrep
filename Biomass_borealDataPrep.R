@@ -86,11 +86,11 @@ defineModule(sim, list(
                     paste("If TRUE, this will re-estimate `P(sim)$fitDeciduousCoverDiscount` This may be unstable and",
                           "is not recommended currently. If `FALSE`, will use the current default")),
     ## -------------------------------------------------------------------------------------------
-    defineParameter("adjustAgeAndLongevity", "numeric", FALSE, NA, NA,
+    defineParameter("adjustAgeAndLongevity", "logical", FALSE, NA, NA,
                     paste("Adjust species longevity to the ages observed on the landscape.", 
                           "Cohort ages are capped at `0.9 * longevity`.",
                           "Any cohort ages exceeding this threshold are lowered using a smoothed function.",
-                          "If FALSE, no adjustments are applied to age or longevity."))
+                          "If FALSE, no adjustments are applied to age or longevity.")),
     defineParameter("dataSource", "character", "SCANFI", NA, NA,
                     paste(
                       "Source for species cover, biomass, age, and landcover data used to initialize cohorts.",
