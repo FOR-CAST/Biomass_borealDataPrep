@@ -86,12 +86,11 @@ defineModule(sim, list(
                     paste("If TRUE, this will re-estimate `P(sim)$fitDeciduousCoverDiscount` This may be unstable and",
                           "is not recommended currently. If `FALSE`, will use the current default")),
     ## -------------------------------------------------------------------------------------------
-    defineParameter("adjustAgeToLongevity", "numeric", NA, 0.5, 1,
-                    paste("Determines whether cohort ages are constrained by species longevity.", 
-                          "If set to NA, no adjustment is applied. Otherwise, cohort ages are capped at", 
-                          "`P(sim)$adjustAgeToLongevity * longevity`. Any cohort age exceeding this threshold", 
-                          "is reduced to the maximum allowed value. If running in old-growth forests, consider setting",
-                          "`P(sim)$adjustAgeToLongevity` = 0.8.")),
+    defineParameter("adjustAgeAndLongevity", "numeric", NA, 0.5, 1,
+                    paste("If not NA, species longevity is calibrated with the ages of cohorts on the landscape.", 
+                          "If set to NA, no adjustment is applied. Cohort ages are capped at", 
+                          "`P(sim)$adjustAgeAndLongevity * longevity`. Any cohort age exceeding this threshold", 
+                          "is reduced using a smoothed function. Consider setting `P(sim)$adjustAgeAndLongevity` to 0.9.")),
     defineParameter("dataSource", "character", "SCANFI", NA, NA,
                     paste(
                       "Source for species cover, biomass, age, and landcover data used to initialize cohorts.",
@@ -642,46 +641,34 @@ createBiomass_coreInputs <- function(sim) {
   assertCohortDataAttr(pixelCohortData)
 
   ## adjust longevity based on age distributions per species
-  # browser() ## add age-longevity adjustments (PR#96)
-  adjLongevityBySpecies <- pixelCohortData[, .(longevity_new = asInteger(quantile(age, 0.99) * 1.3)), by = "speciesCode"]
-
-  sim$species <- sim$species[, speciesCode := species][adjLongevityBySpecies, on = "speciesCode"]
-  setnames(sim$species, "longevity", "longevity_orig")
-  setnames(sim$species, "longevity_new", "longevity")
-
-  longevity <- sim$species
-  longevity$lty_orig <- factor(2, levels = 2, labels = "Longevity Original")
-  longevity$lty_adj <- factor(3, levels = 3, labels = "Longevity Adjusted")
-
-  ageAdjustmentDF <- data.frame(
-    speciesCode = pixelCohortData$speciesCode,
-    age = pixelCohortData$age,
-    processed = "Original"
-  )
-  adjPixelCohortData <- adjustAgeToLongevity(
-    pixelCohortData = pixelCohortData,
-    longevity = sim$species,
-    adjustmentFactor = 0.9 ## TODO: use module parameter (0.9 default)
-  )
-  ageAdjustmentDF <- rbind(
-    ageAdjustmentDF,
-    data.frame(
-      speciesCode = pixelCohortData$speciesCode,
-      age = adjPixelCohortData$age,
-      processed = "Adjusted"
+  ## and apply age adjustment based on adjusted longevity and age adjustment factor
+  if(!is.na(P(sim)$adjustAgeAndLongevity)){
+    adjLongevityBySpecies <- pixelCohortData[, .(longevity_new = asInteger(quantile(age, 0.99) * 1.3)), by = "speciesCode"]
+    sim$species <- sim$species[adjLongevityBySpecies, on = .(species = speciesCode)]
+    setnames(sim$species, c("longevity", "longevity_new"), c("longevity_orig", "longevity"))
+    
+    longevityDT <- sim$species[,.(speciesCode = species, longevity, longevity_orig)]
+    
+    adjPixelCohortData <- adjustAgeToLongevity(
+      pixelCohortData = pixelCohortData,
+      longevity = longevityDT,
+      adjustmentFactor = P(sim)$adjustAgeAndLongevity ## TODO: use module parameter (0.9 default)
     )
-  )
-
-  ## TODO: put this into a plotting fun and use Plots()
-  ggplot(ageAdjustmentDF, aes(x = age, fill = processed)) +
-    geom_histogram(alpha = 0.5, position = position_identity()) +
-    geom_vline(data = longevity, aes(xintercept = longevity_orig, linetype = lty_orig)) +
-    geom_vline(data = longevity, aes(xintercept = longevity), linetype = 3) +
-    facet_wrap( ~ species, nrow = 2, scales = "free") +
-    theme_bw() +
-    scale_linetype_manual(name = NULL, values = "dashed") +
-    labs(y = "Number of cohorts", x = "Age", fill = NULL)
-
+    
+    ageAdjustmentDF <- rbindlist(
+      list(
+        pixelCohortData[, .(speciesCode, age, processed = "Original")],
+        adjPixelCohortData[, .(speciesCode, age, processed = "Adjusted")]
+      )
+    )
+    Plots(ageAdjustmentDF,
+          longevity = longevityDT,
+          fn = ageAdjustmentPlot,
+          filename = "ageAdjustment")
+    
+    pixelCohortData <- adjPixelCohortData
+  }
+  
   ## pixelFateDT
   sim$imputedPixID <- unique(c(sim$imputedPixID, attr(pixelCohortData, "imputedPixID")))
   pixelFateDT <- pixelFate(pixelFateDT, "makeAndCleanInitialCohortData rm cover < minThreshold",
@@ -1273,32 +1260,6 @@ createBiomass_coreInputs <- function(sim) {
     }
   }
   
-  ## If needed, correct ages to be lower than longevity
-  if (!is.na(P(sim)$adjustAgeToLongevity)){
-    ageAdjustmentDF <- data.frame(speciesCode = pixelCohortData$speciesCode,
-                                  age = pixelCohortData$age,
-                                  processed = "Original")
-    pixelCohortData <- adjustAgeToLongevity(
-      pixelCohortData = pixelCohortData,
-      longevity = sim$species,
-      adjustmentFactor = P(sim)$adjustAgeToLongevity
-    )
-    ageAdjustmentDF <- rbind(
-      ageAdjustmentDF,
-      data.frame(
-        speciesCode = pixelCohortData$speciesCode,
-        age = pixelCohortData$age,
-        processed = "Adjusted"
-      )
-    )
-    Plots(
-      ageAdjustmentDF,
-      fn = ageAdjustmentPlot,
-      filename = "ageAdjustment",
-      longevity = sim$species,
-    )
-  }
-
   assertthat::assert_that(all(inRange(na.omit(pixelCohortData$B), 0, round(maxRawB, -2)))) # should they all be below the initial biomass map?
 
   ## Fill in any remaining B values that are still NA -- the previous chunk filled in B for young cohorts only
