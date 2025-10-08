@@ -86,11 +86,11 @@ defineModule(sim, list(
                     paste("If TRUE, this will re-estimate `P(sim)$fitDeciduousCoverDiscount` This may be unstable and",
                           "is not recommended currently. If `FALSE`, will use the current default")),
     ## -------------------------------------------------------------------------------------------
-    defineParameter("adjustAgeAndLongevity", "numeric", NA, 0.5, 1,
-                    paste("If not NA, species longevity is calibrated with the ages of cohorts on the landscape.", 
-                          "If set to NA, no adjustment is applied. Cohort ages are capped at", 
-                          "`P(sim)$adjustAgeAndLongevity * longevity`. Any cohort age exceeding this threshold", 
-                          "is reduced using a smoothed function. Consider setting `P(sim)$adjustAgeAndLongevity` to 0.9.")),
+    defineParameter("adjustAgeAndLongevity", "numeric", FALSE, NA, NA,
+                    paste("Adjust species longevity to the ages observed on the landscape.", 
+                          "Cohort ages are capped at `0.9 * longevity`.",
+                          "Any cohort ages exceeding this threshold are lowered using a smoothed function.",
+                          "If FALSE, no adjustments are applied to age or longevity."))
     defineParameter("dataSource", "character", "SCANFI", NA, NA,
                     paste(
                       "Source for species cover, biomass, age, and landcover data used to initialize cohorts.",
@@ -642,7 +642,7 @@ createBiomass_coreInputs <- function(sim) {
 
   ## adjust longevity based on age distributions per species
   ## and apply age adjustment based on adjusted longevity and age adjustment factor
-  if(!is.na(P(sim)$adjustAgeAndLongevity)){
+  if(P(sim)$adjustAgeAndLongevity){
     adjLongevityBySpecies <- pixelCohortData[, .(longevity_new = asInteger(quantile(age, 0.99) * 1.3)), by = "speciesCode"]
     sim$species <- sim$species[adjLongevityBySpecies, on = .(species = speciesCode)]
     setnames(sim$species, c("longevity", "longevity_new"), c("longevity_orig", "longevity"))
@@ -652,7 +652,7 @@ createBiomass_coreInputs <- function(sim) {
     adjPixelCohortData <- adjustAgeToLongevity(
       pixelCohortData = pixelCohortData,
       longevity = longevityDT,
-      adjustmentFactor = P(sim)$adjustAgeAndLongevity ## TODO: use module parameter (0.9 default)
+      adjustmentFactor = 0.9
     )
     
     ageAdjustmentDF <- rbindlist(
