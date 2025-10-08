@@ -678,7 +678,7 @@ createBiomass_coreInputs <- function(sim) {
   )
 
   ## TODO: put this into a plotting fun and use Plots()
-  ggplot(ageAdjustmentDF, aes(x = age, fill = processed)) +
+  gg_longevity_age <- ggplot(ageAdjustmentDF, aes(x = age, fill = processed)) +
     geom_histogram(alpha = 0.5, position = position_identity()) +
     geom_vline(data = longevity, aes(xintercept = longevity_orig, linetype = lty_orig)) +
     geom_vline(data = longevity, aes(xintercept = longevity), linetype = 3) +
@@ -686,6 +686,8 @@ createBiomass_coreInputs <- function(sim) {
     theme_bw() +
     scale_linetype_manual(name = NULL, values = "dashed") +
     labs(y = "Number of cohorts", x = "Age", fill = NULL)
+
+  ggsave(file.path(figurePath(sim), "longevity-age-adjustments.png"), gg_longevity_age)
 
   ## pixelFateDT
   sim$imputedPixID <- unique(c(sim$imputedPixID, attr(pixelCohortData, "imputedPixID")))
