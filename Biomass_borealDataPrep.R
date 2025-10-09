@@ -438,9 +438,9 @@ createBiomass_coreInputs <- function(sim) {
 
   cacheTags <- c(currentModule(sim), "init")
 
-  message(blue("Starting to createBiomass_coreInputs in Biomass_borealDataPrep: ", Sys.time()))
+  message(cli::col_blue("Starting to createBiomass_coreInputs in Biomass_borealDataPrep: ", Sys.time()))
   if (is.null(sim$speciesLayers)) {
-    stop(red(paste(
+    stop(cli::col_red(paste(
       "'speciesLayers' are missing in Biomass_borealDataPrep init event.\n",
       "This is likely due to the module producing 'speciesLayers' being scheduled after Biomass_borealDataPrep.\n",
       "Please check module order."
@@ -502,7 +502,7 @@ createBiomass_coreInputs <- function(sim) {
   }
 
   ## species traits inputs ---------------------------------------
-  message(blue("Prepare 'species' table, i.e., species level traits", Sys.time()))
+  message(cli::col_blue("Prepare 'species' table, i.e., species level traits", Sys.time()))
 
   sim$species <- prepSpeciesTable(
     speciesTable = sim$speciesTable,
@@ -690,9 +690,9 @@ createBiomass_coreInputs <- function(sim) {
 
   ## partition totalBiomass into individual species B -----------------------------------------
   ## via estimating how %cover and %biomass are related
-  message(blue("Partitioning totalBiomass per pixel into cohort B as:"))
+  message(cli::col_blue("Partitioning totalBiomass per pixel into cohort B as:"))
   if (isTRUE(P(sim)$fitDeciduousCoverDiscount)) {
-    message(magenta(paste0(format(P(sim)$coverPctToBiomassPctModel, appendLF = FALSE))))
+    message(cli::col_magenta(paste0(format(P(sim)$coverPctToBiomassPctModel, appendLF = FALSE))))
 
     params(sim)$Biomass_borealDataPrep$deciduousCoverDiscount <- deciduousCoverDiscountFun(
       pixelCohortData = pixelCohortData,
@@ -702,8 +702,8 @@ createBiomass_coreInputs <- function(sim) {
       Cache(userTags = c(cacheTags, "decidCoverDisc"), omitArgs = c("userTags"))
 
   } else {
-    message(magenta(paste0(format(P(sim)$coverPctToBiomassPctModel, appendLF = FALSE))))
-    message(blue("using previously estimated deciduousCoverDiscount:",
+    message(cli::col_magenta(paste0(format(P(sim)$coverPctToBiomassPctModel, appendLF = FALSE))))
+    message(cli::col_blue("using previously estimated deciduousCoverDiscount:",
                  round(P(sim)$deciduousCoverDiscount, 3)))
   }
 
@@ -902,8 +902,8 @@ createBiomass_coreInputs <- function(sim) {
       Cache()
   }
 
-  message(blue("Estimating Species Establishment Probability using P(sim)$coverModel, which is"))
-  message(magenta(paste0(format(P(sim)$coverModel, appendLF = FALSE), collapse = "")))
+  message(cli::col_blue("Estimating Species Establishment Probability using P(sim)$coverModel, which is"))
+  message(cli::col_magenta(paste0(format(P(sim)$coverModel, appendLF = FALSE), collapse = "")))
 
   useCloud <- if (!is.null(sim$cloudFolderID)) {
     (isTRUE(getOption("reproducible.useCache", FALSE)) && P(sim)$useCloudCacheForStats)
@@ -931,9 +931,9 @@ createBiomass_coreInputs <- function(sim) {
     userTags = c(cacheTags, "modelCover"),
     omitArgs = c("showSimilar", "useCache", ".specialData", "useCloud", "cloudFolderID")
   )
-  message(blue("  The rsquared is: "))
+  message(cli::col_blue("  The rsquared is: "))
   out <- lapply(capture.output(as.data.frame(round(modelCover$rsq, 4))), function(x) {
-    message(blue(x))
+    message(cli::col_blue(x))
   })
 
   ## export model before overriding happens
@@ -970,8 +970,8 @@ createBiomass_coreInputs <- function(sim) {
     ## force parameter values to avoid more checks;
     ## If using mixed effect model, see here for good discussion of
     ##  shrinkage https://www.tjmahr.com/plotting-partial-pooling-in-mixed-effects-models/
-    message(blue("Estimating biomass using P(sim)$biomassModel as:"), "\n",
-            magenta(paste0(format(P(sim)$biomassModel, appendLF = FALSE), collapse = "")))
+    message(cli::col_blue("Estimating biomass using P(sim)$biomassModel as:"), "\n",
+            cli::col_magenta(paste0(format(P(sim)$biomassModel, appendLF = FALSE), collapse = "")))
 
     ## NOTE: we are NOT using logB because the relationship between B~age should be hump-shaped
     ## (or at least capped at high age values). Ideally, we would want a non-linear model
@@ -1008,7 +1008,7 @@ createBiomass_coreInputs <- function(sim) {
       if (needRedo && (!tryControl || !needRescaleModelB)) {
         modCallChar <- paste(deparse(P(sim)$biomassModel), collapse = "")
         if (any(grepl("Rescale", modMessages)) & !needRescaleModelB) {
-          message(blue("Trying to rescale variables to refit P(sim)$biomassModel"))
+          message(cli::col_blue("Trying to rescale variables to refit P(sim)$biomassModel"))
           ## save this in separate objects for later
           logAge_sc <- scale(cohortDataOnlyForestLCCBiomassSubset$logAge)
           cover_sc <- scale(cohortDataOnlyForestLCCBiomassSubset$cover)
@@ -1021,7 +1021,7 @@ createBiomass_coreInputs <- function(sim) {
           needRescaleModelB <- TRUE
           ueg <- .sortDotsUnderscoreFirst(as.character(unique(cohortDataOnlyForestLCCBiomassSubset2$ecoregionGroup)))
         } else {
-          message(blue("Trying to refit P(sim)$biomassModel with 'bobyqa' optimizer"))
+          message(cli::col_blue("Trying to refit P(sim)$biomassModel with 'bobyqa' optimizer"))
           ## redo model call with new optimizer
           modCallChar <- paste(deparse(P(sim)$biomassModel), collapse = "")
           if (grepl("lme4::lmer", modCallChar)) {
@@ -1029,7 +1029,7 @@ createBiomass_coreInputs <- function(sim) {
           } else if (grepl("lme4::glmer", modCallChar)) {
             modCallChar <-  sub(")$", ", = lme4::glmerControl(optimizer = 'bobyqa'))", modCallChar)
           } else {
-            message(blue("P(sim)$biomassModel does not call 'lme4::lmer' or 'lme4::glmer' explicitly",
+            message(cli::col_blue("P(sim)$biomassModel does not call 'lme4::lmer' or 'lme4::glmer' explicitly",
                          "preventing an attempt to use a different optimizer."))
           }
           tryControl <- TRUE
@@ -1067,9 +1067,9 @@ createBiomass_coreInputs <- function(sim) {
             " attempts of data subsetting and changing lme algorithm.")
   }
 
-  message(blue("  The rsquared is: "))
+  message(cli::col_blue("  The rsquared is: "))
   out <- lapply(capture.output(as.data.frame(round(modelBiomass$rsq, 4))), function(x) {
-    message(blue(x))
+    message(cli::col_blue(x))
   })
 
   if (any(P(sim)$exportModels %in% c("all", "biomassModel"))) {
@@ -1081,7 +1081,7 @@ createBiomass_coreInputs <- function(sim) {
   ## doesn't include combinations with B = 0 because those places can't have the species/ecoregion combo
   ## cohortDataOnlyForestLCCBiomassSubset ends up determining which ecoregion combinations end up in
   ## species ecoregion, thus removing converted/masked classes present cohortDataShortNoCover
-  message(blue("Create speciesEcoregion using modelCover and modelBiomass to estimate species traits"))
+  message(cli::col_blue("Create speciesEcoregion using modelCover and modelBiomass to estimate species traits"))
   speciesEcoregion <- makeSpeciesEcoregion(cohortDataBiomass = cohortDataOnlyForestLCCBiomassSubset,
                                            cohortDataShort = cohortDataShort,
                                            cohortDataShortNoCover = cohortDataShortNoCover,
@@ -1113,7 +1113,7 @@ createBiomass_coreInputs <- function(sim) {
   ## 3. Re-do pixel ID numbering so that it matches the final rasterToMatch
   ## Note: if SA and SALarge are the same, no subsetting will take place.
   if (sum(is.na(as.vector(values(sim$rasterToMatch)))) != sum(is.na(as.vector(values(sim$rasterToMatch_biomassParam))))) {
-    message(blue("Subsetting to studyArea"))
+    message(cli::col_blue("Subsetting to studyArea"))
     rasterToMatch_biomassParam <- sim$rasterToMatch_biomassParam
     rasterToMatch_biomassParam <- setValues(rasterToMatch_biomassParam, seq(ncell(rasterToMatch_biomassParam)))
 
@@ -1190,12 +1190,12 @@ createBiomass_coreInputs <- function(sim) {
 
   if (isTRUE(P(sim)$overrideBiomassInFires)) {
     if (isFALSE(P(sim)$overrideAgeInFires)) {
-      message(blue("'P(sim)$overrideBiomassInFires' is TRUE but 'P(sim)$overrideAgeInFires' if FALSE."))
-      message(blue("B values will NOT be re-estimated inside fire perimeters."))
+      message(cli::col_blue("'P(sim)$overrideBiomassInFires' is TRUE but 'P(sim)$overrideAgeInFires' if FALSE."))
+      message(cli::col_blue("B values will NOT be re-estimated inside fire perimeters."))
     } else {
-      message(blue("Overriding B values (originally from 'rawBiomassMap') within the fire perimeters",
+      message(cli::col_blue("Overriding B values (originally from 'rawBiomassMap') within the fire perimeters",
                    "defined in 'firePerimeters'."))
-      message(blue("To skip this step, set 'P(sim)$overrideBiomassInFires' to FALSE."))
+      message(cli::col_blue("To skip this step, set 'P(sim)$overrideBiomassInFires' to FALSE."))
 
       firstFireYear <- P(sim)$earliestFireYear
       ## this is not necessary when using min(),
@@ -1253,7 +1253,7 @@ createBiomass_coreInputs <- function(sim) {
 
           young <- rbindlist(list(young, youngWAgeEqZero), use.names = TRUE)
         } else {
-          message(blue("No pixels found with ages needing age replacement with last fire year"))
+          message(cli::col_blue("No pixels found with ages needing age replacement with last fire year"))
         }
 
         lengthUniquePixelIndices <- length(unique(pixelCohortData$pixelIndex))
@@ -1282,7 +1282,7 @@ createBiomass_coreInputs <- function(sim) {
   ## Fill in any remaining B values that are still NA -- the previous chunk filled in B for young cohorts only
   if (anyNA(pixelCohortData$B)) {
     theNAsBiomass <- is.na(pixelCohortData$B)
-    message(blue(" -- ", sum(theNAsBiomass),"cohort(s) has NA for Biomass: being replaced with model-derived estimates"))
+    message(cli::col_blue(" -- ", sum(theNAsBiomass),"cohort(s) has NA for Biomass: being replaced with model-derived estimates"))
     set(pixelCohortData, which(theNAsBiomass), "B",
         pmax(0, asInteger(predict(modelBiomass$mod, newdata = pixelCohortData[theNAsBiomass],
                           allow.new.levels = TRUE))))
@@ -1369,7 +1369,7 @@ createBiomass_coreInputs <- function(sim) {
 
 
   ## make sure speciesLayers match RTM (since that's what is used downstream in simulations)
-  message(blue("Writing sim$speciesLayers to disk as they are likely no longer needed in RAM"))
+  message(cli::col_blue("Writing sim$speciesLayers to disk as they are likely no longer needed in RAM"))
 
   # useTerra <- getOption("reproducible.useTerra") ## TODO: reproducible#242
   # options(reproducible.useTerra = FALSE) ## TODO: reproducible#242
@@ -1402,8 +1402,8 @@ createBiomass_coreInputs <- function(sim) {
   sim$speciesEcoregion$ecoregionGroup <- factor(as.character(sim$speciesEcoregion$ecoregionGroup))
 
   ## do assertions
-  message(blue("Create pixelGroups based on: ", paste(sim$columnsForPixelGroups, collapse = ", ")),
-          "\n", blue("Resulted in "), magenta(length(unique(sim$cohortData$pixelGroup))),
+  message(cli::col_blue("Create pixelGroups based on: ", paste(sim$columnsForPixelGroups, collapse = ", ")),
+          "\n", cli::col_blue("Resulted in "), cli::col_magenta(length(unique(sim$cohortData$pixelGroup))),
           " unique pixelGroup values")
   assertSpeciesEcoregionCohortDataMatch(sim$cohortData, sim$speciesEcoregion, doAssertion = TRUE)
 
@@ -1416,7 +1416,7 @@ createBiomass_coreInputs <- function(sim) {
   message("Done Biomass_borealDataPrep: ", Sys.time())
   sim$pixelFateDT <- pixelFateDT
   out <- messageDF(pixelFateDT, 3, "blue")
-  # out <- lapply(capture.output(sim$pixelFateDT), function(x) message(blue(x)))
+  # out <- lapply(capture.output(sim$pixelFateDT), function(x) message(cli::col_blue(x)))
 
   return(invisible(sim))
 }
