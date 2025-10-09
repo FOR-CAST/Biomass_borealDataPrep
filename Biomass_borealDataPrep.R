@@ -14,10 +14,11 @@ defineModule(sim, list(
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
-  documentation = list("README.txt", "Biomass_borealDataPrep.Rmd"),
-  loadOrder = list(after = c("Biomass_speciesData"),
-                   before = c("Biomass_core")),
-
+  documentation = list("README.md", "Biomass_borealDataPrep.Rmd"),
+  loadOrder = list(
+    after = c("Biomass_speciesData"),
+    before = c("Biomass_core")
+  ),
   reqdPkgs = list(
     "archive", "assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
     "merTools", "plyr", "rasterVis", "sf", "terra",
@@ -87,10 +88,10 @@ defineModule(sim, list(
                           "is not recommended currently. If `FALSE`, will use the current default")),
     ## -------------------------------------------------------------------------------------------
     defineParameter("adjustAgeAndLongevity", "logical", FALSE, NA, NA,
-                    paste("Adjust species longevity to the ages observed on the landscape.", 
+                    paste("Adjust species longevity to the ages observed on the landscape.",
                           "Cohort ages are capped at `0.9 * longevity`.",
                           "Any cohort ages exceeding this threshold are lowered using a smoothed function.",
-                          "If FALSE, no adjustments are applied to age or longevity.")),
+                          "If `FALSE`, no adjustments are applied to age or longevity.")),
     defineParameter("dataSource", "character", "SCANFI", NA, NA,
                     paste(
                       "Source for species cover, biomass, age, and landcover data used to initialize cohorts.",
@@ -654,19 +655,19 @@ createBiomass_coreInputs <- function(sim) {
 
   ## adjust longevity based on age distributions per species
   ## and apply age adjustment based on adjusted longevity and age adjustment factor
-  if(P(sim)$adjustAgeAndLongevity){
+  if (P(sim)$adjustAgeAndLongevity) {
     adjLongevityBySpecies <- pixelCohortData[, .(longevity_new = asInteger(quantile(age, 0.99) * 1.3)), by = "speciesCode"]
     sim$species <- sim$species[adjLongevityBySpecies, on = .(species = speciesCode)]
     setnames(sim$species, c("longevity", "longevity_new"), c("longevity_orig", "longevity"))
-    
-    longevityDT <- sim$species[,.(speciesCode = species, longevity, longevity_orig)]
-    
+
+    longevityDT <- sim$species[, .(speciesCode = species, longevity, longevity_orig)]
+
     adjPixelCohortData <- adjustAgeToLongevity(
       pixelCohortData = pixelCohortData,
       longevity = longevityDT,
       adjustmentFactor = 0.9
     )
-    
+
     ageAdjustmentDF <- rbindlist(
       list(
         pixelCohortData[, .(speciesCode, age, processed = "Original")],
@@ -677,10 +678,10 @@ createBiomass_coreInputs <- function(sim) {
           longevity = longevityDT,
           fn = ageAdjustmentPlot,
           filename = "ageAdjustment")
-    
+
     pixelCohortData <- adjPixelCohortData
   }
-  
+
   ## pixelFateDT
   sim$imputedPixID <- unique(c(sim$imputedPixID, attr(pixelCohortData, "imputedPixID")))
   pixelFateDT <- pixelFate(pixelFateDT, "makeAndCleanInitialCohortData rm cover < minThreshold",
@@ -1275,7 +1276,7 @@ createBiomass_coreInputs <- function(sim) {
       }
     }
   }
-  
+
   assertthat::assert_that(all(inRange(na.omit(pixelCohortData$B), 0, round(maxRawB, -2)))) # should they all be below the initial biomass map?
 
   ## Fill in any remaining B values that are still NA -- the previous chunk filled in B for young cohorts only
