@@ -20,12 +20,12 @@ defineModule(sim, list(
     before = c("Biomass_core")
   ),
   reqdPkgs = list(
-    "archive", "assertthat", "crayon", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
+    "archive", "assertthat", "cli", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
     "merTools", "plyr", "rasterVis", "sf", "terra",
     "reproducible (>= 2.1.0)", "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
     "PredictiveEcology/LandR@development (>= 1.1.5.9063)",
-    "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)",
-    "PredictiveEcology/pemisc@development"
+    "PredictiveEcology/pemisc@development",
+    "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)"
   ),
   parameters = rbind(
     ## maxB, maxANPP, SEP estimation section ------------------------------------------------
