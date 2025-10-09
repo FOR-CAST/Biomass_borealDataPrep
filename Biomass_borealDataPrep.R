@@ -677,7 +677,7 @@ createBiomass_coreInputs <- function(sim) {
     Plots(ageAdjustmentDF,
           longevity = longevityDT,
           fn = ageAdjustmentPlot,
-          filename = "ageAdjustment")
+          filename = "age-longevity-adjustments")
 
     pixelCohortData <- adjPixelCohortData
   }
