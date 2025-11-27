@@ -23,7 +23,7 @@ defineModule(sim, list(
     "archive", "assertthat", "cli", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
     "merTools", "plyr", "rasterVis", "sf", "terra",
     "reproducible (>= 2.1.0)", "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-    "PredictiveEcology/LandR@development (>= 1.1.5.9063)",
+    "PredictiveEcology/LandR@development (>= 1.1.5.9076)",
     "PredictiveEcology/pemisc@development",
     "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)"
   ),
@@ -530,6 +530,9 @@ createBiomass_coreInputs <- function(sim) {
   }
 
   ## check that all species have trait values.
+  # This previously was wrong when there are 2:1 mapping ... e.g., Pice_eng_gla and Pice_eng both map to Pice_eng
+  #   Now this is correct
+  # missingTraits <- setdiff(names(sim$speciesLayers), sim$species[[Par$sppEquivCol]])
   missingTraits <- setdiff(names(sim$speciesLayers), sim$species$species)
   if (length(missingTraits) == length(names(sim$speciesLayers))) {
     stop("No trait values were found for ", paste(missingTraits, collapse = ", "), ".\n",
@@ -1365,7 +1368,8 @@ createBiomass_coreInputs <- function(sim) {
   sim$pixelGroupMap <- makePixelGroupMap(pixelCohortData, sim$rasterToMatch)
   #initialize with disturbed (i.e. empty) pixels as pixelGroup 0
   sim$pixelGroupMap[is.na(sim$pixelGroupMap[]) & !is.na(sim$ecoregionMap[])] <- 0 #
-  assert_that(all(is.na(values(mat = FALSE, sim$ecoregionMap)) == is.na(values(mat = FALSE, sim$pixelGroupMap))))
+  assert_that(all(is.na(values(mat = FALSE, sim$ecoregionMap)) ==
+                    is.na(values(mat = FALSE, sim$pixelGroupMap))))
 
 
   ## make sure speciesLayers match RTM (since that's what is used downstream in simulations)
