@@ -1640,10 +1640,10 @@ Save <- function(sim) {
           omitArgs = c("destinationPath", "targetFile", "overwrite", "alsoExtract", "userTags")
         )
     })
-  }
+    LandR::assertStandAgeMapAttr(sim$standAgeMap)
+    sim$imputedPixID <- attr(sim$standAgeMap, "imputedPixID")
 
-  LandR::assertStandAgeMapAttr(sim$standAgeMap)
-  sim$imputedPixID <- attr(sim$standAgeMap, "imputedPixID")
+  }
 
   ## check parameter consistency across modules
   paramCheckOtherMods(sim, "dataYear", ifSetButDifferent = "warning")
