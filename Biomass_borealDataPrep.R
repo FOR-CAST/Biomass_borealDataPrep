@@ -21,7 +21,7 @@ defineModule(sim, list(
   ),
   reqdPkgs = list(
     "archive", "assertthat", "cli", "data.table", "dplyr", "fasterize",  "ggplot2", "httr2",
-    "merTools", "plyr", "rasterVis", "sf", "terra",
+    "merTools", "plyr", "qs2", "rasterVis", "sf", "terra",
     "reproducible (>= 2.1.0)", "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
     "PredictiveEcology/LandR@development (>= 1.1.5.9090)",
     "PredictiveEcology/pemisc@development",
@@ -397,7 +397,6 @@ defineModule(sim, list(
 #   - type `init` is required for initialiazation
 
 doEvent.Biomass_borealDataPrep <- function(sim, eventTime, eventType, debug = FALSE) {
-
   ## open a plotting device so that Biomass_core doesn't plot on top of it if it's too small.
   ## needs to be outside of init, in case init event is cached.
   if (anyPlotting(P(sim)$.plots) && any("screen" %in% P(sim)$.plots)) {
@@ -433,8 +432,9 @@ createBiomass_coreInputs <- function(sim) {
   on.exit(setDTthreads(origDTthreads))
 
   # # ! ----- EDIT BELOW ----- ! #
-  if (is.null(P(sim)$pixelGroupAgeClass))
+  if (is.null(P(sim)$pixelGroupAgeClass)) {
     params(sim)[[currentModule(sim)]]$pixelGroupAgeClass <- P(sim)$successionTimestep
+  }
 
   cacheTags <- c(currentModule(sim), "init")
 
@@ -469,11 +469,7 @@ createBiomass_coreInputs <- function(sim) {
   }
 
   if (!.compareRas(sim$rstLCC, sim$rasterToMatch_biomassParam, res = TRUE)) {
-    sim$rstLCC <- postProcess(
-      sim$rstLCC,
-      to = sim$rasterToMatch_biomassParam,
-      overwrite = TRUE
-    ) |>
+    sim$rstLCC <- postProcess(sim$rstLCC, to = sim$rasterToMatch_biomassParam, overwrite = TRUE) |>
       Cache(.functionName = "postProcessRstLCC")
   }
 
@@ -1002,8 +998,7 @@ createBiomass_coreInputs <- function(sim) {
         .specialData = specDat,
         useCloud = useCloud,
         cloudFolderID = sim$cloudFolderID,
-        userTags = c(modelBiomassTags,
-                     paste0("subsetSize:", P(sim)$subsetDataBiomassModel)),
+        userTags = c(modelBiomassTags, paste0("subsetSize:", P(sim)$subsetDataBiomassModel)),
         omitArgs = c("showSimilar", ".specialData", "useCloud", "cloudFolderID", "useCache")
       )
 
@@ -1031,7 +1026,7 @@ createBiomass_coreInputs <- function(sim) {
           if (grepl("lme4::lmer", modCallChar)) {
             modCallChar <-  sub(")$", ", control = lme4::lmerControl(optimizer = 'bobyqa'))", modCallChar)
           } else if (grepl("lme4::glmer", modCallChar)) {
-            modCallChar <-  sub(")$", ", = lme4::glmerControl(optimizer = 'bobyqa'))", modCallChar)
+            modCallChar <- sub(")$", ", = lme4::glmerControl(optimizer = 'bobyqa'))", modCallChar)
           } else {
             message(cli::col_blue("P(sim)$biomassModel does not call 'lme4::lmer' or 'lme4::glmer' explicitly",
                          "preventing an attempt to use a different optimizer."))
@@ -1049,17 +1044,22 @@ createBiomass_coreInputs <- function(sim) {
         sumResponse <- c(totalBiomass, tryControl, needRescaleModelB)
 
         ## break out of while, even after trying to rescale and fit with bobyqa
-        if (needRescaleModelB & tryControl)
+        if (needRescaleModelB & tryControl) {
           fixModelBiomass <- FALSE
+        }
       } else {
-        if (tryControl && needRescaleModelB)
-          warning("Biomass model did not converge and automated attempts to fix also failed.",
-                  " This will need more attention.")
+        if (tryControl && needRescaleModelB) {
+          warning(
+            "Biomass model did not converge and automated attempts to fix also failed.",
+            " This will need more attention."
+          )
+        }
         break
       }
     } ## End of tryBiomassModel
-    if (!needRedo)
+    if (!needRedo) {
       break
+    }
   } ## End of tryBiomassData
 
   if (!is.null(scaledVarsModelB)) {
@@ -1470,7 +1470,7 @@ Save <- function(sim) {
   ## Study area(s) ------------------------------------------------
   if (!suppliedElsewhere("studyArea", sim)) {
     ## Jan 2021 we agreed to force user to provide a SA/SAL
-    sim$studyArea <- randomStudyArea(seed = 1234, size = (rtm_res^2)*100)
+    sim$studyArea <- randomStudyArea(seed = 1234, size = (rtm_res^2) * 100)
   }
 
   if (!suppliedElsewhere("studyArea_biomassParam", sim)) {
@@ -1529,14 +1529,12 @@ Save <- function(sim) {
 
   ## biomass map
   if (!suppliedElsewhere("rawBiomassMap", sim)) {
-    stopifnot(
-      "dataYear must be one of 2000, 2010, 2020" = P(sim)$dataYear %in% c(2000, 2010, 2020)
-    )
+    stopifnot("dataYear must be one of 2000, 2010, 2020" = P(sim)$dataYear %in% c(2000, 2010, 2020))
 
     sim$rawBiomassMap <- prepRawBiomassMap(
       dataSource = P(sim)$dataSource,
       dataYear = P(sim)$dataYear,
-      to =  sim$rasterToMatch_biomassParam,
+      to = sim$rasterToMatch_biomassParam,
       destinationPath = dPath,
       writeTo = paste0("_", P(sim)$.studyAreaName, "_", P(sim)$dataYear, "_", P(sim)$dataSource) |>
         .suffix("biomass.tif", suffix = _)
@@ -1555,9 +1553,7 @@ Save <- function(sim) {
       overwrite = TRUE,
       writeTo = .suffix("rstLCC.tif", paste0("_", P(sim)$.studyAreaName, "_", P(sim)$dataYear))
     ) |>
-      Cache(
-        userTags = c("rstLCC", currentModule(sim), P(sim)$.studyAreaName, P(sim)$dataYear)
-      )
+      Cache(userTags = c("rstLCC", currentModule(sim), P(sim)$.studyAreaName, P(sim)$dataYear))
   }
 
   ## Ecodistrict ------------------------------------------------
@@ -1643,7 +1639,6 @@ Save <- function(sim) {
     })
     LandR::assertStandAgeMapAttr(sim$standAgeMap)
     sim$imputedPixID <- attr(sim$standAgeMap, "imputedPixID")
-
   }
 
   ## check parameter consistency across modules

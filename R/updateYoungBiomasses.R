@@ -12,11 +12,13 @@ updateYoungBiomasses <- function(young, modelBiomass, ...) {
   useRescaled <- !is.null(modelBiomass$scaledVarsModelB)
 
   if (useRescaled) {
-    if (!is(modelBiomass$scaledVarsModelB, "list"))
+    if (!is(modelBiomass$scaledVarsModelB, "list")) {
       stop("modelBiomass$scaledVarsModelB must be a list")
+    }
 
-    if (!all(names(modelBiomass$scaledVarsModelB) %in% c("cover", "logAge")))
+    if (!all(names(modelBiomass$scaledVarsModelB) %in% c("cover", "logAge"))) {
       stop("modelBiomass$scaledVarsModelB must be a list with 'cover' and 'logAge' entries")
+    }
 
     setnames(young, c("logAge", "cover"), c("logAge_orig", "cover_orig")) ## original, unscaled vars
     young[, `:=`(logAge = scale(logAge_orig,
@@ -98,13 +100,27 @@ updateYoungBiomasses <- function(young, modelBiomass, ...) {
 #' @param currentModule A character string of the current module e.g., from currentModule(sim)
 #' @param modules A list of character strings of the modules in the sim, e.g., from modules(sim)
 #' @export
-spinUpPartial <- function(pixelCohortData, speciesEcoregion, maxAge,
-                          # rasterToMatch, speciesLayers,
-                          minRelativeB, species, sppEquiv, sppEquivCol,
-                          sppColorVect, paths, currentModule, modules) {
+spinUpPartial <- function(
+  pixelCohortData,
+  speciesEcoregion,
+  maxAge,
+  # rasterToMatch, speciesLayers,
+  minRelativeB,
+  species,
+  sppEquiv,
+  sppEquivCol,
+  sppColorVect,
+  paths,
+  currentModule,
+  modules
+) {
   rng <- range(pixelCohortData$age)
-  if (rng[1] <= 0) stop("This spinup is only tested with age > 0")
-  if (rng[2] > maxAge) stop("This spinup is only tested with age <= maxAge")
+  if (rng[1] <= 0) {
+    stop("This spinup is only tested with age > 0")
+  }
+  if (rng[2] > maxAge) {
+    stop("This spinup is only tested with age <= maxAge")
+  }
   cd <- copy(pixelCohortData)
   cd[, `:=`(pixelGroup = as.integer(factor(pixelIndex)))]
   pixelGroupMap <- pixelGroupMapGenerate(cd)
@@ -112,25 +128,31 @@ spinUpPartial <- function(pixelCohortData, speciesEcoregion, maxAge,
   studyArea <- vect(ext(pixelGroupMap), crs(pixelGroupMap))
   rasterToMatch <- pixelGroupMap
   ecoregionMap <- pixelGroupMap
-  levels(ecoregionMap) <- data.frame(ID = 1:max(cd$pixelGroup, na.rm = TRUE),
-                                     ecoregion = 1, ecoregionGroup = 1, stringsAsFactors = TRUE)
+  levels(ecoregionMap) <- data.frame(
+    ID = 1:max(cd$pixelGroup, na.rm = TRUE),
+    ecoregion = 1,
+    ecoregionGroup = 1,
+    stringsAsFactors = TRUE
+  )
   # minRelativeB <- sim$minRelativeB
   ecoregion <- makeEcoregionDT(cd, speciesEcoregion)
   parameters <- list(
-    Biomass_core = list(.saveInitialTime = NA,
-                        .saveInterval = NA,
-                        .useParallel = 1,
-                        seedingAlgorithm = "noSeeding",
-                        calcSummaryBGM = NULL,
-                        .plots = NULL,
-                        .maxMemory = 1e9,
-                        sppEquivCol = sppEquivCol,
-                        .useCache = NULL,
-                        successionTimestep = 10,
-                        minCohortBiomass = 0,
-                        initialBiomassSource = "cohortData",
-                        vegLeadingProportion = 0
-    ))
+    Biomass_core = list(
+      .saveInitialTime = NA,
+      .saveInterval = NA,
+      .useParallel = 1,
+      seedingAlgorithm = "noSeeding",
+      calcSummaryBGM = NULL,
+      .plots = NULL,
+      .maxMemory = 1e9,
+      sppEquivCol = sppEquivCol,
+      .useCache = NULL,
+      successionTimestep = 10,
+      minCohortBiomass = 0,
+      initialBiomassSource = "cohortData",
+      vegLeadingProportion = 0
+    )
+  )
   #sppEquiv needed or module stops, but object unused, likewise with speciesLayers
   speciesLayers <- "species"
 
@@ -192,10 +214,13 @@ spinUpPartial <- function(pixelCohortData, speciesEcoregion, maxAge,
     modules <- "Biomass_core"
   }
 
-  outputs <- data.frame(expand.grid(objectName = "cohortData",
-                                    saveTime = unique(seq(times$start, times$end, by = 1)),
-                                    eventPriority = 1, fun = "qs::qsave",
-                                    stringsAsFactors = FALSE))
+  outputs <- data.frame(expand.grid(
+    objectName = "cohortData",
+    saveTime = unique(seq(times$start, times$end, by = 1)),
+    eventPriority = 1,
+    fun = "qs2::qs_save",
+    stringsAsFactors = FALSE
+  ))
   suppressMessages({
     ss <- simInit(paths = paths, outputs = outputs, times = times)
   })
@@ -203,9 +228,12 @@ spinUpPartial <- function(pixelCohortData, speciesEcoregion, maxAge,
   mySimOut <- simInitAndSpades(
     # .cacheExtra = list(knownDigest, paths$outputPath),
     # omitArgs = c("objects", "params", "debug", "paths"),
-    times = times, params = parameters, modules = modules, # quick = "paths",
+    times = times,
+    params = parameters,
+    modules = modules, # quick = "paths",
     paths = paths,
-    objects = objectsForYoungSim, outputs = outputs,
+    objects = objectsForYoungSim,
+    outputs = outputs,
     # outputObjects = "pixelGroupMap",
     debug = 1
   )
