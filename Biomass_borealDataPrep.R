@@ -1447,7 +1447,7 @@ plottingFn <- function(sim) {
               fn = plotFn_speciesEcoregion,
               types = P(sim)$.plots,
               filename = paste0("speciesEcoregion", "_", time(sim), "_", SEtype),
-              SEtype = SEtype)
+              SEtype = SEtype, useCache = "png")
       }
   )
 }
