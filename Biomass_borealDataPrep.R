@@ -1397,92 +1397,127 @@ Save <- function(sim) {
       biomassURL <- extractURL("rawBiomassMap")
     } else {
       if (P(sim)$dataYear == 2011) {
-        biomassURL <- paste0("http://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/",
-                             "canada-forests-attributes_attributs-forests-canada/2011-attributes_attributs-2011/",
-                             "NFI_MODIS250m_2011_kNN_Structure_Biomass_TotalLiveAboveGround_v1.tif")
+        biomassURL <- paste0(
+          "http://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/",
+          "canada-forests-attributes_attributs-forests-canada/2011-attributes_attributs-2011/",
+          "NFI_MODIS250m_2011_kNN_Structure_Biomass_TotalLiveAboveGround_v1.tif"
+        )
       } else {
         stop("'P(sim)$dataYear' must be 2001 OR 2011")
       }
     }
 
-    sim$rawBiomassMap <- prepRawBiomassMap(url = biomassURL,
-                                           studyAreaName = P(sim)$.studyAreaName,
-                                           cacheTags = cacheTags,
-                                           rasterToMatch = if (!needRTML) sim$rasterToMatchLarge else if (!needRTM) sim$rasterToMatch else NULL,
-                                           maskWithRTM = if (!needRTM) TRUE else FALSE,
-                                           studyArea = sim$studyAreaLarge,
-                                           destinationPath = dPath)
+    sim$rawBiomassMap <- prepRawBiomassMap(
+      url = biomassURL,
+      studyAreaName = P(sim)$.studyAreaName,
+      cacheTags = cacheTags,
+      rasterToMatch = if (!needRTML) {
+        sim$rasterToMatchLarge
+      } else if (!needRTM) {
+        sim$rasterToMatch
+      } else {
+        NULL
+      },
+      maskWithRTM = if (!needRTM) TRUE else FALSE,
+      studyArea = sim$studyAreaLarge,
+      destinationPath = dPath
+    )
   } else {
     if (!is.null(sim$rawBiomassMap)) {
-      if (!compareRaster(sim$rawBiomassMap, sim$studyAreaLarge, stopiffalse = FALSE)) {
+      if (
+        !compareRaster(
+          sim$rawBiomassMap,
+          sim$studyAreaLarge,
+          stopiffalse = FALSE
+        )
+      ) {
         ## note that extents may never align if the resolution and projection do not allow for it
         opt <- options("reproducible.useTerra" = TRUE) # Too many times this was failing with non-Terra # Eliot March 8, 2022
         on.exit(options(opt), add = TRUE)
-        sim$rawBiomassMap <- Cache(postProcess,
-                                   sim$rawBiomassMap,
-                                   method = "bilinear",
-                                   studyArea = sim$studyAreaLarge,
-                                   overwrite = TRUE)
+        sim$rawBiomassMap <- Cache(
+          postProcess,
+          sim$rawBiomassMap,
+          method = "bilinear",
+          studyArea = sim$studyAreaLarge,
+          overwrite = TRUE
+        )
         options(opt)
       }
     }
   }
 
-  RTMs <- prepRasterToMatch(studyArea = sim$studyArea,
-                            studyAreaLarge = sim$studyAreaLarge,
-                            rasterToMatch = if (needRTM) NULL else sim$rasterToMatch,
-                            rasterToMatchLarge = if (needRTML) NULL else sim$rasterToMatchLarge,
-                            destinationPath = dPath,
-                            templateRas = sim$rawBiomassMap,
-                            studyAreaName = P(sim)$.studyAreaName,
-                            cacheTags = cacheTags)
+  RTMs <- prepRasterToMatch(
+    studyArea = sim$studyArea,
+    studyAreaLarge = sim$studyAreaLarge,
+    rasterToMatch = if (needRTM) NULL else sim$rasterToMatch,
+    rasterToMatchLarge = if (needRTML) NULL else sim$rasterToMatchLarge,
+    destinationPath = dPath,
+    templateRas = sim$rawBiomassMap,
+    studyAreaName = P(sim)$.studyAreaName,
+    cacheTags = cacheTags
+  )
   sim$rasterToMatch <- RTMs$rasterToMatch
   sim$rasterToMatchLarge <- RTMs$rasterToMatchLarge
   rm(RTMs)
 
   if (!compareCRS(sim$studyArea, sim$rasterToMatch)) {
-    warning(paste0("studyArea and rasterToMatch projections differ.\n",
-                   "studyArea will be projected to match rasterToMatch"))
-    sim$studyArea <- projectInputs(sim$studyArea, raster::crs(sim$rasterToMatch))
+    warning(paste0(
+      "studyArea and rasterToMatch projections differ.\n",
+      "studyArea will be projected to match rasterToMatch"
+    ))
+    sim$studyArea <- projectInputs(
+      sim$studyArea,
+      raster::crs(sim$rasterToMatch)
+    )
     # sim$studyArea <- spTransform(sim$studyArea, raster::crs(sim$rasterToMatch)) # This didn't work when sim$studyArea is sf
     sim$studyArea <- fixErrors(sim$studyArea)
   }
 
   if (!compareCRS(sim$studyAreaLarge, sim$rasterToMatchLarge)) {
-    warning(paste0("studyAreaLarge and rasterToMatchLarge projections differ.\n",
-                   "studyAreaLarge will be projected to match rasterToMatchLarge"))
-    sim$studyAreaLarge <- projectInputs(sim$studyAreaLarge, raster::crs(sim$rasterToMatchLarge))
+    warning(paste0(
+      "studyAreaLarge and rasterToMatchLarge projections differ.\n",
+      "studyAreaLarge will be projected to match rasterToMatchLarge"
+    ))
+    sim$studyAreaLarge <- projectInputs(
+      sim$studyAreaLarge,
+      raster::crs(sim$rasterToMatchLarge)
+    )
     # sim$studyAreaLarge <- spTransform(sim$studyAreaLarge, raster::crs(sim$rasterToMatchLarge)) # This didn't work when sim$studyArea is sf
     sim$studyAreaLarge <- fixErrors(sim$studyAreaLarge)
   }
 
   ## Land cover raster ------------------------------------------------
   if (!suppliedElsewhere("rstLCC", sim)) {
-    sim$rstLCC <- Cache(prepInputsLCC,
-                        year = 2010,
-                        studyArea = sim$studyAreaLarge, ## Ceres: makePixel table needs same no. pixels for this, RTM rawBiomassMap, LCC.. etc
-                        rasterToMatch = sim$rasterToMatchLarge,
-                        destinationPath = dPath,
-                        filename2 = .suffix("rstLCC.tif", paste0("_", P(sim)$.studyAreaName)),
-                        overwrite = TRUE,
-                        userTags = c("rstLCC", currentModule(sim), P(sim)$.studyAreaName),
-                        omitArgs = c("destinationPath", "userTags", "filename2", "overwrite"))
+    sim$rstLCC <- Cache(
+      prepInputsLCC,
+      year = 2010,
+      studyArea = sim$studyAreaLarge, ## Ceres: makePixel table needs same no. pixels for this, RTM rawBiomassMap, LCC.. etc
+      rasterToMatch = sim$rasterToMatchLarge,
+      destinationPath = dPath,
+      filename2 = .suffix("rstLCC.tif", paste0("_", P(sim)$.studyAreaName)),
+      overwrite = TRUE,
+      userTags = c("rstLCC", currentModule(sim), P(sim)$.studyAreaName),
+      omitArgs = c("destinationPath", "userTags", "filename2", "overwrite")
+    )
   }
 
   ## Ecodistrict ------------------------------------------------
   if (!suppliedElsewhere("ecoregionLayer", sim)) {
-    sim$ecoregionLayer <- Cache(prepInputs,
-                                targetFile = "ecodistricts.shp",
-                                archive = asPath("ecodistrict_shp.zip"),
-                                url = extractURL("ecoregionLayer", sim),
-                                alsoExtract = "similar",
-                                destinationPath = dPath,
-                                filename2 = NULL,
-                                studyArea = sim$studyAreaLarge,   ## Ceres: makePixel table needs same no. pixels for this, RTM rawBiomassMap, LCC.. etc
-                                overwrite = TRUE,
-                                useSAcrs = TRUE, # this is required to make ecoZone be in CRS of studyArea
-                                fun = "raster::shapefile",
-                                userTags = c("prepInputsEcoDistrict_SA", currentModule(sim), cacheTags))
+    sim$ecoregionLayer <- Cache(
+      prepInputs,
+      targetFile = "ecodistricts.shp",
+      archive = asPath("ecodistrict_shp.zip"),
+      url = extractURL("ecoregionLayer", sim),
+      alsoExtract = "similar",
+      destinationPath = dPath,
+      filename2 = NULL,
+      studyArea = sim$studyAreaLarge, ## Ceres: makePixel table needs same no. pixels for this, RTM rawBiomassMap, LCC.. etc
+      overwrite = TRUE,
+      useSAcrs = TRUE, # this is required to make ecoZone be in CRS of studyArea
+      fun = "sf::st_read",
+      userTags = c("prepInputsEcoDistrict_SA", currentModule(sim), cacheTags)
+    ) |>
+      sf::as_Spatial()
   }
 
   if (P(sim)$overrideAgeInFires) {
