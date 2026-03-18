@@ -1629,8 +1629,7 @@ Save <- function(sim) {
         overwrite = TRUE,
         useCache = FALSE, ## TODO: temporary FALSE due to attributes being lost on retrieval
         firePerimeters = if (P(sim)$overrideAgeInFires) sim$firePerimeters else NULL,
-        fireURL = if (P(sim)$overrideAgeInFires) extractURL("firePerimeters") else NULL,
-        startTime = P(sim)$dataYear
+        fireURL = if (P(sim)$overrideAgeInFires) extractURL("firePerimeters") else NULL
       ) |>
         Cache(
           userTags = c("prepInputsStandAge_rtm", currentModule(sim), cacheTags),
