@@ -724,26 +724,27 @@ createBiomass_coreInputs <- function(sim) {
   ## They will transition to another class before they arrive at a tree maximum biomass.
   ## However, we need to give them a "forest class" that they might "become"
   ## The ecoregion map must be updated to reflect this new class.
-
-  NTEMSlcc <- c(0, 20, 30, 31, 32, 33, 40, 50, 80, 81, 100, 210, 220, 230, P(sim)$LCCClassesToReplaceNN)
+  lccCodes <- c(0, 20, 30, 31, 32, 33, 40, 50, 80, 81, 100, 210, 220, 230, P(sim)$LCCClassesToReplaceNN)
   ## unclassified, water, snow/ice, rock/rubble, exposed/barren,
   ## bryoids, shrubs, wetland, wetland-treed, herbs, coniferous,
   ## broadleaf, mixedwood, disturbed)
-  if (length(P(sim)$LCCClassesToReplaceNN) && all(na.omit(as.vector(sim$rstLCC)) %in% NTEMSlcc)) {
+  if (length(P(sim)$LCCClassesToReplaceNN) && all(na.omit(as.vector(sim$rstLCC)) %in% lccCodes)) {
     uwc <- P(sim)$LCCClassesToReplaceNN
     message("Replace ", paste(uwc, collapse = ", "), " values to a neighbour class *that exists*")
     availableCombinations <- unique(pixelCohortData[, .(speciesCode, initialEcoregionCode, pixelIndex)])
 
     freqsUpdates <- startFinishLCC <- list()
-    lastYrOnNTEMS <- NTEMSfinalYearForLCC(timeout = 10) |> Cache()
+    lastYrOnSCANFI <- SCANFIfinalYearForLCC(timeout = 10) |> Cache()
 
-    for (yr in c(lastYrOnNTEMS, 1984)) {
+    SCANFILCCyears <- seq(2000, lastYrOnSCANFI, by = 10)
+
+    for (yr in SCANFILCCyears) {
       freqs <- freq(rstLCCAdj)
       num2replace <- freqs$count[freqs$value %in% P(sim)$LCCClassesToReplaceNN]
       if ((length(num2replace) > 0) && (num2replace > 1000)) {
         yrChar <- as.character(yr)
         startFinishLCC[[yrChar]] <-
-          prepInputs_NTEMS_LCC_FAO(
+          prepInputs_SCANFI_LCC_FAO(
             year = yr,
             to = sim$rstLCC,
             disturbedCode = 240,
@@ -1702,28 +1703,44 @@ Save <- function(sim) {
   return(invisible(sim))
 }
 
-#' Probe NTEMS NFI web page to find the final year available
+#' Probe SCANFI LCC hosted on Google Drive to find the final year available
 #'
 #' Starts searching
-#' `paste0("https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_", lastYrOnNTEMS, ".zip")`
-#' at current year (`Sys.Date()`), and subtract one year, try, subtract a year, try etc.
+#' `https://drive.google.com/drive/folders/1zLYV-wcDjJfSflH1VkXG6sosqZZF4SYc`
+#' for most recent year with LCC data.
 #'
 #' @param timeout Numeric, in seconds, for how long to allow a download to happen
 #'   before interrupting it and declaring, "that worked, use that year".
-NTEMSfinalYearForLCC <- function(timeout = 5) {
-  resp <- ""
-  lastYrOnNTEMS <- as.integer(format(Sys.Date(), "%Y")) + 1
+SCANFIfinalYearForLCC <- function(timeout = 5) {
 
-  while (!is(resp, "try-error")) {
-    lastYrOnNTEMS <- lastYrOnNTEMS - 1
-    url <- paste0(
-      "https://opendata.nfis.org/downloads/forest_change/CA_forest_VLCE2_",
-      lastYrOnNTEMS,
-      ".zip"
-    )
-    req <- httr2::request(url) |> httr2::req_timeout(timeout)
-    resp <- try(httr2::req_perform(req), silent = TRUE)
+  url <- "https://drive.google.com/drive/folders/1zLYV-wcDjJfSflH1VkXG6sosqZZF4SYc"
+
+  driveFiles <- as.data.table(googledrive::with_drive_quiet(googledrive::drive_ls(url)))
+  driveFiles <- driveFiles[nchar(driveFiles$name) == 4, ]
+  driveFiles$Year <- as.numeric(driveFiles$name)
+
+  years <- sort(unique(driveFiles$Year), decreasing = TRUE)
+
+  lastYrOnSCANFI <- NULL
+  for (y in years) {
+    id <- driveFiles$id[driveFiles$Year == y]
+    yearURL <- paste0("https://drive.google.com/drive/folders/", id)
+    yearFiles <- as.data.table(googledrive::with_drive_quiet(googledrive::drive_ls(yearURL)))
+    LCC <- yearFiles[grepl("nfiLandCover_CanadaLCCclassCodes", yearFiles$name), ]
+
+    if (nrow(LCC) > 0) {
+      lastYrOnSCANFI <- LCC
+      lastYrOnSCANFI$year <- y
+      break
+    }
   }
 
-  lastYrOnNTEMS
+  if (is.null(lastYrOnSCANFI)) {
+    message("No data for any year.")
+  } else {
+    message("Using year: ", unique(lastYrOnSCANFI$year))
+    lastYrOnSCANFI <- regmatches(lastYrOnSCANFI$name, regexpr("\\d{4}", lastYrOnSCANFI$name))
+  }
+
+  as.numeric(lastYrOnSCANFI)
 }
