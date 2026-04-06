@@ -1579,10 +1579,10 @@ Save <- function(sim) {
   if (P(sim)$overrideAgeInFires) {
     if (!suppliedElsewhere("firePerimeters", sim)) {
       sa <- if (is(sim$studyArea_biomassParam, "sf")) {
-        aggregate(sim$studyArea_biomassParam, list(rep(1, nrow(sim$studyArea_biomassParam))),
+        terra::aggregate(sim$studyArea_biomassParam, list(rep(1, nrow(sim$studyArea_biomassParam))),
                   FUN = function(x) x)
       } else {
-        aggregate(sim$studyArea_biomassParam)
+        terra::aggregate(sim$studyArea_biomassParam)
       }
       sim$firePerimeters <- prepInputsFireYear(
         destinationPath = dPath,
@@ -1609,13 +1609,13 @@ Save <- function(sim) {
   ## Stand age map ------------------------------------------------
   if (!suppliedElsewhere("standAgeMap", sim)) {
     sa <- if (is(sim$studyArea_biomassParam, "sf")) {
-      aggregate(
+      terra::aggregate(
         sim$studyArea_biomassParam,
         list(rep(1, nrow(sim$studyArea_biomassParam))),
         FUN = function(x) x
       )
     } else {
-      aggregate(sim$studyArea_biomassParam)
+      terra::aggregate(sim$studyArea_biomassParam)
     }
 
     httr::with_config(config = httr::config(ssl_verifypeer = P(sim)$.sslVerify), {
