@@ -216,7 +216,7 @@ defineModule(sim, list(
                     "Internal. Can be names of events or the whole module name; these will be cached by SpaDES")
   ),
   inputObjects = bindrows(
-    expectsInput("cloudFolderID", "character",
+    expectsInput("cloudFolderID", "character", # nolint: in_no_default
                  "The google drive location where cloudCache will store large statistical objects"),
     expectsInput("columnsForPixelGroups", "character",
                  paste("The names of the columns in `cohortData` that define unique `pixelGroup`s.",
@@ -229,7 +229,7 @@ defineModule(sim, list(
                               "It must have same extent and crs as `studyArea_biomassParam`.",
                               "It is superseded by `sim$ecoregionRst` if that object is supplied by the user"),
                  sourceURL = "https://sis.agr.gc.ca/cansis/nsdb/ecostrat/district/ecodistrict_shp.zip"),
-    expectsInput("ecoregionRst", "SpatRaster",
+    expectsInput("ecoregionRst", "SpatRaster",         # nolint: in_no_default
                  desc = paste("A raster that characterizes the unique ecological regions used to",
                               "parameterize the biomass, cover, and species establishment probability models.",
                               "If this object is provided, it will supercede `sim$ecoregionLayer`.",
@@ -923,7 +923,7 @@ createBiomass_coreInputs <- function(sim) {
     uniqueEcoregionGroups = .sortDotsUnderscoreFirst(as.character(unique(cohortDataShort$ecoregionGroup))),
     sumResponse = sum(cohortDataShort$coverPres, cohortDataShort$coverNum, na.rm = TRUE),
     .specialData = cds,
-    .cacheExtra = levels(cohortDataShort$speciesCode), ## in case sppEquivCol changes
+    .cacheExtra = levels(cohortDataShort$speciesCode), ## in case sppEquivCol changes # nolint: conflicting_fn_unqualified
     useCloud = useCloud,
     cloudFolderID = sim$cloudFolderID,
     # useCache = "overwrite",
@@ -1009,8 +1009,8 @@ createBiomass_coreInputs <- function(sim) {
         if (any(grepl("Rescale", modMessages)) & !needRescaleModelB) {
           message(cli::col_blue("Trying to rescale variables to refit P(sim)$biomassModel"))
           ## save this in separate objects for later
-          logAge_sc <- scale(cohortDataOnlyForestLCCBiomassSubset$logAge)
-          cover_sc <- scale(cohortDataOnlyForestLCCBiomassSubset$cover)
+          logAge_sc <- scale(cohortDataOnlyForestLCCBiomassSubset$logAge) # nolint: conflicting_fn_unqualified
+          cover_sc <- scale(cohortDataOnlyForestLCCBiomassSubset$cover) # nolint: conflicting_fn_unqualified
 
           scaledVarsModelB <- list(logAge = logAge_sc, cover = cover_sc)
           ## remove attributes with as.numeric
