@@ -21,10 +21,10 @@ updateYoungBiomasses <- function(young, modelBiomass, ...) {
     }
 
     setnames(young, c("logAge", "cover"), c("logAge_orig", "cover_orig")) ## original, unscaled vars
-    young[, `:=`(logAge = scale(logAge_orig,
+    young[, `:=`(logAge = scale(logAge_orig,                            # nolint: conflicting_fn_unqualified
                                 center = attr(modelBiomass$scaledVarsModelB$logAge, "scaled:center"),
                                 scale = attr(modelBiomass$scaledVarsModelB$logAge, "scaled:scale")),
-                 cover = scale(cover_orig,
+                 cover = scale(cover_orig,                              # nolint: conflicting_fn_unqualified
                                center = attr(modelBiomass$scaledVarsModelB$cover, "scaled:center"),
                                scale = attr(modelBiomass$scaledVarsModelB$cover, "scaled:scale")))]
   }
@@ -128,7 +128,7 @@ spinUpPartial <- function(
   studyArea <- vect(ext(pixelGroupMap), crs(pixelGroupMap))
   rasterToMatch <- pixelGroupMap
   ecoregionMap <- pixelGroupMap
-  levels(ecoregionMap) <- data.frame(
+  levels(ecoregionMap) <- data.frame( # nolint: conflicting_fn_unqualified
     ID = 1:max(cd$pixelGroup, na.rm = TRUE),
     ecoregion = 1,
     ecoregionGroup = 1,

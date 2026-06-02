@@ -10,7 +10,7 @@ defineModule(sim, list(
     person(c("Alex", "M."), "Chubaty", email = "achubaty@for-cast.ca", role = c("aut"))
   ),
   childModules = character(0),
-  version = list(Biomass_borealDataPrep = "1.5.10"),
+  version = list(Biomass_borealDataPrep = "1.5.11"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
@@ -1493,8 +1493,10 @@ Save <- function(sim) {
 
   ## this is necessary if studyArea and studyArea_biomassParam are multipolygon objects
   if (nrow(studyArea) > 1) {
-    stop("please provide a study area that is not a multipolygon",
-         "which will incorrectly segment ecoregions. Try `terra::aggregate`")
+    studyArea <- sf::st_as_sf(terra::aggregate(terra::vect(studyArea)))
+    if ( (nrow(studyArea) > 1) )
+      stop("please provide a study area that is not a multipolygon",
+           "which will incorrectly segment ecoregions. Try `terra::aggregate`")
   }
 
   if (length(st_within(studyArea, studyArea_biomassParam))[[1]] == 0) {
