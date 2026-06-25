@@ -125,6 +125,12 @@ defineModule(sim, list(
                           "biomass or cover. Specifically, if biomass or cover is 0, but age is not, or if age is missing (`NA`),",
                           "then age will be imputed. Note that this is independent from replacing ages inside fire perimeters",
                           "(see `P(sim)$overrideAgeInFires`)")),
+    defineParameter("landis", "logical", FALSE, NA, NA,
+                    paste("If `TRUE`, run in 'LANDIS mode': collapse the forested land-cover (`rstLCC`) classes",
+                          "(`P(sim)$forestedLCCClasses`) to a single class so that `ecoregionGroup` is defined by",
+                          "ecoregion only, not ecoregion x LCC. `maxB`, `maxANPP` and species establishment",
+                          "probability are then estimated per ecoregion, as expected by LANDIS-II Biomass Succession.",
+                          "Default `FALSE` preserves the standard ecoregion x LCC behaviour.")),
     defineParameter("LCCClassesToReplaceNN", "numeric", 240, NA, NA,
                     paste("This will replace these classes on the landscape with the closest forest class `P(sim)$forestedLCCClasses`.",
                           "If the user is using the LCC 2005 land-cover data product for `rstLCC`, then they may wish to",
@@ -617,6 +623,14 @@ createBiomass_coreInputs <- function(sim) {
   
   rstLCCAdj <- sim$rstLCC
   rstLCCAdj[pixelsToRmDueToNAsAndNonForest] <- NA
+
+  ## LANDIS mode: collapse the forested LCC classes to a single class so the downstream
+  ## `ecoregionGroup` (built from ecoregion x LCC) reduces to ecoregion only, and maxB / maxANPP /
+  ## establishprob are estimated per ecoregion as LANDIS-II Biomass Succession expects.
+  if (isTRUE(P(sim)$landis)) {
+    forestedClasses <- P(sim)$forestedLCCClasses
+    rstLCCAdj <- terra::classify(rstLCCAdj, cbind(forestedClasses, forestedClasses[1L]))
+  }
   
   ## make initial ecoregionFiles - some of these may have LCC that get replaced
   ecoregionFiles <- prepEcoregions(
