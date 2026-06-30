@@ -191,28 +191,21 @@ spinUpPartial <- function(
   on.exit(unlink(paths$outputPath, recursive = TRUE), add = TRUE)
 
   bcVersion <- "1.3.10"
-  ## if Biomass_core doesn't exist in modulePath or is too old, then download it
-  modulesInProject <- list.dirs(paths$modulePath, full.names = TRUE, recursive = FALSE) |> as.list()
-  names(modulesInProject) <- modulesInProject
-  modulesInProject <- lapply(modulesInProject, basename)
+  ## Use the project's PINNED Biomass_core (no runtime getModule fetch). Require it present
+  ## (and new enough) in modulePath, then symlink it into this module's `submodules` dir so
+  ## the nested run gets an isolated modulePath.
+  modules <- "Biomass_core"
   Biomass_core_path <- paths$modulePath[dir.exists(file.path(paths$modulePath, "Biomass_core"))]
-  BCore_missingOrOld <- TRUE
-  if (length(Biomass_core_path) > 0) {
-    if (moduleVersion("Biomass_core", Biomass_core_path) >= bcVersion) {
-      ## trim unnecessary modules:
-      BCore_missingOrOld <- FALSE
-      # modules <- modules[modules == "Biomass_core"]
-    }
+  if (length(Biomass_core_path) == 0L ||
+        moduleVersion("Biomass_core", Biomass_core_path) < bcVersion) {
+    stop("Biomass_borealDataPrep requires a pinned 'Biomass_core' (>= ", bcVersion,
+         ") in modulePath; none found or too old.")
   }
-  if (BCore_missingOrOld) {
-    ## NOTE: don't install pkgs mid-stream; use module metadata to declare pkgs for installation
-    moduleNameAndBranch <- paste0("PredictiveEcology/Biomass_core@development (>= ", bcVersion, ")")
-    modules <- Require::extractPkgName(moduleNameAndBranch)
-    paths$modulePath <- file.path(submodulePath, "Biomass_core")
-    getModule(moduleNameAndBranch, modulePath = paths$modulePath, overwrite = TRUE) ## will only overwrite if wrong version
-  } else {
-    modules <- "Biomass_core"
+  bcDest <- file.path(submodulePath, "Biomass_core")
+  if (!dir.exists(bcDest)) {
+    file.symlink(normalizePath(file.path(Biomass_core_path[[1]], "Biomass_core")), bcDest)
   }
+  paths$modulePath <- submodulePath
 
   outputs <- data.frame(expand.grid(
     objectName = "cohortData",

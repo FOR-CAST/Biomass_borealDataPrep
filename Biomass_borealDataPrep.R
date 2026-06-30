@@ -24,8 +24,7 @@ defineModule(sim, list(
     "merTools", "plyr", "qs2", "rasterVis", "sf", "terra", "googledrive",
     "reproducible (>= 2.1.0)", "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
     "PredictiveEcology/LandR@development (>= 1.1.5.9090)",
-    "PredictiveEcology/pemisc@development",
-    "PredictiveEcology/SpaDES.project@development (>= 0.0.8.9026)"
+    "PredictiveEcology/pemisc@development"
   ),
   parameters = rbind(
     ## maxB, maxANPP, SEP estimation section ------------------------------------------------
