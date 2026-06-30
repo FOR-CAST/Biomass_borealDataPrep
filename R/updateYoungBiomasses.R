@@ -180,8 +180,13 @@ spinUpPartial <- function(
     "LandR.assertions" = FALSE,
     "LandR.verbose" = 0,
     "spades.recoveryMode" = FALSE,
-    "spades.moduleCodeChecks" = FALSE # Turn off all module's code checking
+    "spades.moduleCodeChecks" = FALSE, # Turn off all module's code checking
+    ## SpaDES.core flips spades.loadReqdPkgs to FALSE once the outer simInit/spades is warmed up;
+    ## re-enable it so the nested Biomass_core simInitAndSpades below loads its OWN reqdPkgs
+    ## (pemisc, SpaDES.tools, ...) rather than relying on this module's reqdPkgs covering them.
+    "spades.loadReqdPkgs" = TRUE
   )
+  on.exit(options(opts), add = TRUE)
 
   ## TODO: make the following into a function to use across modules (e.g. B_sppFactorial)
   curModPath <- file.path(paths$modulePath, currentModule)
