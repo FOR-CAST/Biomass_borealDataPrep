@@ -16,7 +16,6 @@ name: Render module Rmd
 
 jobs:
   render:
-    if: "!contains(github.event.commits[0].message, '[skip-ci]')"
     name: Render module Rmd
     runs-on: ubuntu-latest
 
@@ -55,9 +54,8 @@ jobs:
 
       - name: Install module package and other dependencies
         run: |
-          pkgs <- SpaDES.core::packages(modules = "[[name]]", paths = "..")[[1]]
-          Require::Require(pkgs[[1]])
-          Require::Require(c("PredictiveEcology/LandR@development"), require = FALSE)
+          pkgs <- SpaDES.core::packages(modules = "Biomass_borealDataPrep", paths = "..")
+          Require::Require(pkgs[[1]], require = FALSE)
         shell: Rscript {0}
 
       - name: Render module Rmd
