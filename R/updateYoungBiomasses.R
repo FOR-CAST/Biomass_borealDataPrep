@@ -207,9 +207,16 @@ spinUpPartial <- function(
          ") in modulePath; none found or too old.")
   }
   bcDest <- file.path(submodulePath, "Biomass_core")
-  if (!dir.exists(bcDest)) {
-    file.symlink(normalizePath(file.path(Biomass_core_path[[1]], "Biomass_core")), bcDest)
+  ## Always (re)create the symlink to the pinned Biomass_core, removing any STALE entry first so it
+  ## cannot shadow the pin -- a leftover real dir from an old getModule run, or a prior symlink. Remove
+  ## the symlink itself (never recurse into its target) or a stale real dir, then symlink fresh.
+  lnk <- Sys.readlink(bcDest)
+  if (isTRUE(nzchar(lnk))) {
+    unlink(bcDest)
+  } else if (dir.exists(bcDest)) {
+    unlink(bcDest, recursive = TRUE)
   }
+  file.symlink(normalizePath(file.path(Biomass_core_path[[1]], "Biomass_core")), bcDest)
   paths$modulePath <- submodulePath
 
   outputs <- data.frame(expand.grid(
