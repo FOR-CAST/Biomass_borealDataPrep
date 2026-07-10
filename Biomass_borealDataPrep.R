@@ -1583,6 +1583,10 @@ Save <- function(sim) {
   ## Ecodistrict ------------------------------------------------
   if (!suppliedElsewhere("ecoregionLayer", sim)) {
     ## Ceres: makePixel table needs same no. pixels for this, RTM rawBiomassMap, LCC.. etc
+    ## NOTE: the LandWeb v2 branch forced fun = "sf::st_read" here to dodge a terra SpatVector
+    ## topology error (the pipeline firewall sets reproducible.shapefileRead = "terra::vect").
+    ## Tested 2026-07-10 (terra 1.9.34 / GEOS 3.12-3.14): does not reproduce -- national
+    ## ecodistricts has 0 invalid geometries. No action unless a full-domain run fails here.
     sim$ecoregionLayer <- prepInputs(
       targetFile = "ecodistricts.shp",
       archive = asPath("ecodistrict_shp.zip"),
@@ -1608,6 +1612,11 @@ Save <- function(sim) {
       } else {
         terra::aggregate(sim$studyArea_biomassParam)
       }
+      ## NOTE: the LandWeb v2 branch forced an sf read here to dodge a terra SpatVector topology
+      ## error on the fire perimeters. Tested 2026-07-10 (terra 1.9.34 / GEOS 3.12-3.14): the
+      ## module path (prepInputsFireYear -> terra::rasterize) tolerates NFDB's 767 invalid geoms;
+      ## only a full dissolve fails (not done here, and sf fails it too). No action unless a
+      ## full-domain run fails here (any real fix belongs in LandR::prepInputsFireYear).
       sim$firePerimeters <- prepInputsFireYear(
         destinationPath = dPath,
         studyArea = sa,
