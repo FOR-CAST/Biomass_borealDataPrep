@@ -10,7 +10,7 @@ defineModule(sim, list(
     person(c("Alex", "M."), "Chubaty", email = "achubaty@for-cast.ca", role = c("aut"))
   ),
   childModules = character(0),
-  version = list(Biomass_borealDataPrep = "1.5.12"),
+  version = list(Biomass_borealDataPrep = "1.5.13"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
@@ -23,7 +23,7 @@ defineModule(sim, list(
     "archive", "assertthat", "cli", "data.table", "dplyr", "ggplot2", "httr2",
     "merTools", "plyr", "qs2", "rasterVis", "sf", "terra", "googledrive",
     "reproducible (>= 2.1.0)", "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-    "PredictiveEcology/LandR@development (>= 1.1.5.9090)",
+    "PredictiveEcology/LandR@development (>= 1.2.0.9005)",
     "PredictiveEcology/pemisc@development"
   ),
   parameters = rbind(
@@ -137,6 +137,16 @@ defineModule(sim, list(
                           "Since this is about estimating parameters for growth, it doesn't make any sense to have",
                           "unique estimates for transient classes in most cases. If no classes are to be replaced, pass",
                           "`'LCCClassesToReplaceNN' = numeric(0)` when supplying parameters.")),
+    defineParameter("LCCClassesToReplaceNNMethod", "character", "nearestWeighted", NA, NA,
+                    paste("Passed to `LandR::convertUnwantedLCC()` as its `method` argument, controlling how",
+                          "each `P(sim)$LCCClassesToReplaceNN` pixel picks among the available classes in its",
+                          "neighbourhood. Both options weight the classes by their local abundance and differ",
+                          "only in reproducibility. `'nearestWeighted'` (default) keys the draw on the pixel's",
+                          "ground position, so it is deterministic, needs no seed, and a grid-aligned crop of",
+                          "the study area gives the same answer as the full extent. `'nearestRandom'` draws",
+                          "from the RNG instead, so replicates differ -- but note that `Cache()` does not key",
+                          "on RNG state, so a cached call replays a single draw unless the seed is part of the",
+                          "cache key. See `?LandR::convertUnwantedLCC`.")),
     defineParameter("minCoverThreshold", "numeric", 5, 0, 100,
                     "Pixels with total cover that is equal to or below this number will be omitted from the dataset"),
     defineParameter("minRelativeBFunction", "call", quote(LandR::makeMinRelativeB(pixelCohortData)),
@@ -834,14 +844,18 @@ createBiomass_coreInputs <- function(sim) {
     newLCCClasses <- convertUnwantedLCC(
       classesToReplace = P(sim)$LCCClassesToReplaceNN,
       rstLCC = rstLCCAdj,
-      availableERC_by_Sp = availableCombinations2
+      availableERC_by_Sp = availableCombinations2,
+      method = P(sim)$LCCClassesToReplaceNNMethod
     ) |>
       Cache(userTags = c(cacheTags, "newLCCClasses", "stable"))
     
     ## adjust rstLCCAdj so that ecoregionMap will contain the last set of updated LCCClassesToReplaceNN
     if (nrow(newLCCClasses)) {
       if (!is.null(newLCCClasses$newPossLCC)) {
-        ## LandR versions prior to 1.1.5.9045 will not have this
+        ## LandR versions prior to 1.1.5.9045 do not have this, and 1.2.0.9004 dropped it
+        ## again -- where this guard silently stopped firing, leaving rstLCCAdj (and so
+        ## ecoregionMap) showing the un-replaced classes. reqdPkgs now floors LandR at
+        ## 1.2.0.9005, which restored it.
         rstLCCAdj[newLCCClasses$pixelIndex] <- newLCCClasses$newPossLCC
       }
     }
