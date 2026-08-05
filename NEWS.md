@@ -1,5 +1,23 @@
 Known issues: <https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues>
 
+version 1.5.12
+=============
+
+## dependency changes
+* requires `LandR (>= 1.2.0.9005)`, which added the `method` argument to
+  `convertUnwantedLCC()` and removed that function's deterministic lowest-class tie-break.
+  1.2.0.9004 had also dropped the `newPossLCC` column this module uses to write
+  replacement classes back into `rstLCCAdj`, where the `is.null()` guard silently stopped
+  firing and left `rstLCCAdj` (hence `ecoregionMap`) showing the un-replaced classes;
+  1.2.0.9005 restores it.
+
+## new features
+* new parameter `LCCClassesToReplaceNNMethod`, passed to `LandR::convertUnwantedLCC()` as
+  its `method`. Default `"nearestRandom"` preserves the stochastic allocation this module
+  has always had. `"nearestWeighted"` gives the same abundance weighting but keys the draw
+  on the pixel's ground position, so it is deterministic without a seed and a grid-aligned
+  crop of the study area agrees with the full extent.
+
 # Biomass_borealDataPrep 1.5.11 (2026-06-02)
 
 * New `landis` mode parameter (default `FALSE`): when enabled, the forested LCC classes are collapsed to a single class in `createBiomass_coreInputs()` (before `prepEcoregions`/`makePixelTable`) so `ecoregionGroup` is defined by ecoregion only, not ecoregion x LCC; `maxB`, `maxANPP`, and species establishment probability are then estimated per ecoregion, as expected by LANDIS-II Biomass Succession. Default `FALSE` preserves the standard ecoregion x LCC behaviour.
