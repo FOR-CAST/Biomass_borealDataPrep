@@ -10,7 +10,7 @@ defineModule(sim, list(
     person(c("Alex", "M."), "Chubaty", email = "achubaty@for-cast.ca", role = c("aut"))
   ),
   childModules = character(0),
-  version = list(Biomass_borealDataPrep = "1.5.13"),
+  version = list(Biomass_borealDataPrep = "1.5.15"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
@@ -23,7 +23,7 @@ defineModule(sim, list(
     "archive", "assertthat", "cli", "data.table", "dplyr", "ggplot2", "httr2",
     "merTools", "plyr", "qs2", "rasterVis", "sf", "terra", "googledrive",
     "reproducible (>= 2.1.0)", "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-    "PredictiveEcology/LandR@development (>= 1.2.0.9005)",
+    "PredictiveEcology/LandR@development (>= 1.2.0.9015)",
     "PredictiveEcology/pemisc@development"
   ),
   parameters = rbind(
@@ -94,13 +94,14 @@ defineModule(sim, list(
     defineParameter("dataSource", "character", "SCANFI", NA, NA,
                     paste(
                       "Source for species cover, biomass, age, and landcover data used to initialize cohorts.",
-                      "Currently, only kNN (2001, 2011) and SCANFI (2020) provide all necesarry layers.",
+                      "kNN (2001, 2011) and SCANFI (V2: every 5 years, 1985-2025) provide all necessary layers.",
                       "Mixing multiple datasets requires additonal raster geoprocessing and is not recommended."
                     )),
     defineParameter("dataYear", "numeric", 2020, NA, NA,
                     paste(
-                      "the year for which SCANFI data wil be fetched for use with the module.",
-                      "One of 2000, 2010, or 2020, but note that only 2020 is currently supported." ## TODO
+                      "the year for which `dataSource` data will be fetched for use with the module.",
+                      "For SCANFI, any year from 1985 to 2025 in steps of 5; `LandR::prepRawBiomassMap()`",
+                      "stops on a year the source does not provide."
                     )),
     defineParameter("ecoregionLayerField", "character", NULL, NA, NA,
                     paste("the name of the field used to distinguish ecoregions, if supplying a polygon.",
@@ -244,8 +245,8 @@ defineModule(sim, list(
                  "The google drive location where cloudCache will store large statistical objects"),
     expectsInput("columnsForPixelGroups", "character",
                  paste("The names of the columns in `cohortData` that define unique `pixelGroup`s.",
-                       "Default is `c('ecoregionGroup', 'speciesCode', 'age')`;",
-                       "see `?LandR::columnsForPixelGroups`).")),
+                       "Default is `c('ecoregionGroup', 'speciesCode', 'age', 'B')`;",
+                       "see `?LandR::columnsForPixelGroups()`).")),
     expectsInput("ecoregionLayer", "sf",
                  desc = paste("A `sf` polygon object that characterizes the unique ecological regions (`ecoregionGroup`) used to",
                               "parameterize the biomass, cover, and species establishment probability models.",
@@ -437,7 +438,8 @@ doEvent.Biomass_borealDataPrep <- function(sim, eventTime, eventType, debug = FA
       # schedule future event(s)
       sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "Biomass_borealDataPrep", "save")
       
-      if (anyPlotting(P(sim)$.plots)) {
+      ## plottingFn maps speciesEcoregion, which a no-species run (speciesLayers NULL) does not produce
+      if (anyPlotting(P(sim)$.plots) && !is.null(sim$speciesLayers)) {
         plottingFn(sim)
       }
     },
@@ -463,7 +465,11 @@ createBiomass_coreInputs <- function(sim) {
   cacheTags <- c(currentModule(sim), "init")
   
   message(cli::col_blue("Starting to createBiomass_coreInputs in Biomass_borealDataPrep: ", Sys.time()))
-  if (is.null(sim$speciesLayers)) {
+  ## Some ecological land units have no tree species at all. `sppEquiv` is where that is
+  ## established (fireSense_ELFs), and the species-layer producer then supplies NULL, so a
+  ## NULL `speciesLayers` is only a mis-ordering error when there ARE species to produce.
+  noSpecies <- is.data.frame(sim$sppEquiv) && nrow(sim$sppEquiv) == 0L
+  if (is.null(sim$speciesLayers) && !noSpecies) {
     stop(cli::col_red(paste(
       "'speciesLayers' are missing in Biomass_borealDataPrep init event.\n",
       "This is likely due to the module producing 'speciesLayers' being scheduled after Biomass_borealDataPrep.\n",
@@ -505,6 +511,32 @@ createBiomass_coreInputs <- function(sim) {
     ) |>
       Cache(.functionName = "postProcessFirePerimeters")
   }
+  ## no tree species ---------------------------------------------
+  ## Everything below estimates tree traits from species cover, so with no species there is
+  ## nothing to estimate: hand back empty outputs. Sits after the standAgeMap/rstLCC alignment
+  ## (the nested fireSense run reads standAgeMap) and before anything that touches speciesLayers.
+  if (noSpecies) {
+    noSpp <- noSpeciesCoreInputs(sim$rasterToMatch)
+    sim$cohortData <- noSpp$cohortData
+    sim$pixelGroupMap <- noSpp$pixelGroupMap
+    ## empty but present: suppliedElsewhere() sees this module DECLARE these, so downstream
+    ## fallbacks (e.g. Biomass_regeneration .inputObjects) are suppressed and would read NULL
+    sim$sufficientLight <- noSpp$sufficientLight
+    sim$speciesEcoregion <- noSpp$speciesEcoregion
+    ## the same call as the with-species path below: with a 0-row sppEquiv it returns the
+    ## 0-row species table with the full column set
+    sim$species <- prepSpeciesTable(
+      speciesTable = sim$speciesTable,
+      sppEquiv = sim$sppEquiv,
+      areas = P(sim)$speciesTableAreas,
+      sppEquivCol = P(sim)$sppEquivCol
+    ) |>
+      Cache()
+    
+    message(cli::col_blue("Done Biomass_borealDataPrep (no tree species): ", Sys.time()))
+    return(invisible(sim))
+  }
+  
   # options(opt)
   if (!.compareRas(sim$speciesLayers, sim$rasterToMatch_biomassParam, res = TRUE)) {
     sim$speciesLayers <- postProcessTerra(
@@ -613,19 +645,20 @@ createBiomass_coreInputs <- function(sim) {
   pixelsToRmDueToNAs <- nonForestedPixels(sim$speciesLayers, omitNonTreedPixels = FALSE)
   pixelFateDT <- pixelFate(fate = "Total number pixels", runningPixelTotal = ncell(sim$speciesLayers))
   pixelFateDT <- pixelFate(pixelFateDT, "NAs on sim$speciesLayers", sum(pixelsToRmDueToNAs))
-  if (P(sim)$omitNonTreedPixels) {
-    checkNonforest <- sum(!(as.vector(sim$rstLCC[]) %in% P(sim)$forestedLCCClasses)) -
-      tail(pixelFateDT$pixelsRemoved, 1)
-    if (checkNonforest < 0) browser() ## TODO: remove browser
-    pixelFateDT <- pixelFate(pixelFateDT, "Non forested pixels (based on LCC classes)", checkNonforest)
-  }
   pixelsToRmDueToNAsAndNonForest <- nonForestedPixels(
     sim$speciesLayers,
     P(sim)$omitNonTreedPixels,
     P(sim)$forestedLCCClasses,
     sim$rstLCC
   )
-  
+  if (P(sim)$omitNonTreedPixels) {
+    ## Only the non-forested pixels not already removed as NAs. Subtracting the NA count from
+    ## all non-forested pixels assumed every NA pixel is non-forested; where the LCC calls some
+    ## of them forest, that undercounted, and went negative when enough of them did.
+    pixelFateDT <- pixelFate(pixelFateDT, "Non forested pixels (based on LCC classes)",
+                             sum(pixelsToRmDueToNAsAndNonForest) - sum(pixelsToRmDueToNAs))
+  }
+
   ## The next function will remove the "zero" class on sim$ecoregionRst
   pixelFateDT <- pixelFate(pixelFateDT, "Removing 0 class in sim$ecoregionRst",
                            sum(as.vector(sim$ecoregionRst[])[!pixelsToRmDueToNAsAndNonForest] == 0, na.rm = TRUE))
@@ -766,9 +799,8 @@ createBiomass_coreInputs <- function(sim) {
     availableCombinations <- unique(pixelCohortData[, .(speciesCode, initialEcoregionCode, pixelIndex)])
     
     freqsUpdates <- startFinishLCC <- list()
-    lastYrOnSCANFI <- SCANFIfinalYearForLCC(timeout = 10) |> Cache()
-    
-    SCANFILCCyears <- seq(2000, lastYrOnSCANFI, by = 10)
+    ## which SCANFI years should fill these pixels for a given dataYear is under discussion (#110)
+    SCANFILCCyears <- c(2000, 2010, 2020)
     
     for (yr in SCANFILCCyears) {
       freqs <- freq(rstLCCAdj)
@@ -947,43 +979,41 @@ createBiomass_coreInputs <- function(sim) {
     FALSE
   }
   
-  ## Remove all cases where there is 100% presence in an ecoregionGroup -- causes failures in binomial models
-  cdsWh <- cohortDataShort$coverPres == cohortDataShort$coverNum
-  cds <- Copy(cohortDataShort)
-  cds <- cds[!cdsWh]
-  
-  modelCover <- Cache(
-    statsModel,
-    modelFn = P(sim)$coverModel,
-    # modelFn = cm,
-    uniqueEcoregionGroups = .sortDotsUnderscoreFirst(as.character(unique(cohortDataShort$ecoregionGroup))),
-    sumResponse = sum(cohortDataShort$coverPres, cohortDataShort$coverNum, na.rm = TRUE),
-    .specialData = cds,
-    .cacheExtra = levels(cohortDataShort$speciesCode), ## in case sppEquivCol changes # nolint: conflicting_fn_unqualified
-    useCloud = useCloud,
-    cloudFolderID = sim$cloudFolderID,
-    # useCache = "overwrite",
-    showSimilar = getOption("reproducible.showSimilar", FALSE),
-    userTags = c(cacheTags, "modelCover"),
-    omitArgs = c("showSimilar", "useCache", ".specialData", "useCloud", "cloudFolderID")
-  )
-  message(cli::col_blue("  The rsquared is: "))
-  out <- lapply(capture.output(as.data.frame(round(modelCover$rsq, 4))), function(x) {
-    message(cli::col_blue(x))
+  ## Rows with 100% presence in an ecoregionGroup cause failures in binomial models: estimateCoverModel()
+  ## leaves them out of the fit and gives them probability 1 (every row, with no fit, if none is left)
+  cover <- estimateCoverModel(cohortDataShort, fitCover = function(cds) {
+    Cache(
+      statsModel,
+      modelFn = P(sim)$coverModel,
+      # modelFn = cm,
+      uniqueEcoregionGroups = .sortDotsUnderscoreFirst(as.character(unique(cohortDataShort$ecoregionGroup))),
+      sumResponse = sum(cohortDataShort$coverPres, cohortDataShort$coverNum, na.rm = TRUE),
+      .specialData = cds,
+      .cacheExtra = levels(cohortDataShort$speciesCode), ## in case sppEquivCol changes # nolint: conflicting_fn_unqualified
+      useCloud = useCloud,
+      cloudFolderID = sim$cloudFolderID,
+      # useCache = "overwrite",
+      showSimilar = getOption("reproducible.showSimilar", FALSE),
+      userTags = c(cacheTags, "modelCover"),
+      omitArgs = c("showSimilar", "useCache", ".specialData", "useCloud", "cloudFolderID")
+    )
   })
-  
-  ## export model before overriding happens
-  if (any(P(sim)$exportModels %in% c("all", "coverModel"))) {
-    sim$modelCover <- modelCover
+  if (is.null(cover$model)) {
+    message(cli::col_blue("  Every species is present in every pixel of its ecoregionGroup, so establishment ",
+                          "probability is 1 everywhere and coverModel was not fitted"))
+  } else {
+    message(cli::col_blue("  The rsquared is: "))
+    out <- lapply(capture.output(as.data.frame(round(cover$model$rsq, 4))), function(x) {
+      message(cli::col_blue(x))
+    })
+
+    ## export model before overriding happens
+    if (any(P(sim)$exportModels %in% c("all", "coverModel"))) {
+      sim$modelCover <- cover$model
+    }
   }
-  
-  if (isTRUE(any(cdsWh))) {
-    cds[, pred := fitted(modelCover$mod, response = "response")]
-    cohortDataShort <- cds[, -c("coverPres", "coverNum")][cohortDataShort,
-                                                          on = c("ecoregionGroup", "speciesCode"), nomatch = NA]
-    cohortDataShort[is.na(pred), pred := 1]
-    modelCover <- cohortDataShort$pred
-  }
+  modelCover <- cover$modelCover
+  cohortDataShort <- cover$cohortDataShort
   
   ## For biomass
   ### Subsample cases where there are more than 50 points in an ecoregionGroup * speciesCode
@@ -1567,8 +1597,6 @@ Save <- function(sim) {
   
   ## biomass map
   if (!suppliedElsewhere("rawBiomassMap", sim)) {
-    stopifnot("dataYear must be one of 2000, 2010, 2020" = P(sim)$dataYear %in% c(2000, 2010, 2020))
-    
     sim$rawBiomassMap <- prepRawBiomassMap(
       dataSource = P(sim)$dataSource,
       dataYear = P(sim)$dataYear,
@@ -1588,7 +1616,6 @@ Save <- function(sim) {
       projectTo = sim$rasterToMatch_biomassParam,
       disturbedCode = 240,
       destinationPath = dPath,
-      overwrite = TRUE,
       writeTo = .suffix("rstLCC.tif", paste0("_", P(sim)$.studyAreaName, "_", P(sim)$dataYear))
     ) |>
       Cache(userTags = c("rstLCC", currentModule(sim), P(sim)$.studyAreaName, P(sim)$dataYear))
@@ -1609,8 +1636,7 @@ Save <- function(sim) {
       destinationPath = dPath,
       writeTo = NULL,
       to = sim$studyArea_biomassParam,
-      fun = getOption("reproducible.shapefileRead"),
-      overwrite = TRUE
+      fun = getOption("reproducible.shapefileRead")
     ) |>
       Cache(
         .functionName = "prepInputs_forEcoregionLayer",
@@ -1635,7 +1661,6 @@ Save <- function(sim) {
         destinationPath = dPath,
         studyArea = sa,
         rasterToMatch = sim$rasterToMatch_biomassParam,
-        overwrite = TRUE,
         url = extractURL("firePerimeters"),
         fireField = "YEAR"
       ) |>
@@ -1673,7 +1698,6 @@ Save <- function(sim) {
         destinationPath = dPath,
         rasterToMatch = sim$rasterToMatch_biomassParam,
         # writeTo = .suffix("standAgeMap.tif", paste0("_", P(sim)$.studyAreaName)),
-        overwrite = TRUE,
         useCache = FALSE, ## TODO: temporary FALSE due to attributes being lost on retrieval
         firePerimeters = if (P(sim)$overrideAgeInFires) sim$firePerimeters else NULL,
         fireURL = if (P(sim)$overrideAgeInFires) extractURL("firePerimeters") else NULL
@@ -1723,7 +1747,11 @@ Save <- function(sim) {
         sppEquiv = sim$sppEquiv,
         sppEquivCol = P(sim)$sppEquivCol,
         thresh = 10,
-        year = P(sim)$dataYear
+        ## `dataYear`, not `year`: prepSpeciesLayers_SCANFI()'s formal is `dataYear`, and
+        ## "year" is not a prefix of it, so `year =` fell into `...` and was discarded --
+        ## species cover was always the 2020 set while biomass and age honoured dataYear.
+        ## Same fix as Biomass_speciesData#47; this module was missed at the time.
+        dataYear = P(sim)$dataYear
       ) |>
         Cache(
           userTags = c(cacheTags, "speciesLayers"),
@@ -1747,46 +1775,4 @@ Save <- function(sim) {
   }
   
   return(invisible(sim))
-}
-
-#' Probe SCANFI LCC hosted on Google Drive to find the final year available
-#'
-#' Starts searching
-#' `https://drive.google.com/drive/folders/1zLYV-wcDjJfSflH1VkXG6sosqZZF4SYc`
-#' for most recent year with LCC data.
-#'
-#' @param timeout Numeric, in seconds, for how long to allow a download to happen
-#'   before interrupting it and declaring, "that worked, use that year".
-SCANFIfinalYearForLCC <- function(timeout = 5) {
-  
-  url <- "https://drive.google.com/drive/folders/1zLYV-wcDjJfSflH1VkXG6sosqZZF4SYc"
-  
-  driveFiles <- as.data.table(googledrive::with_drive_quiet(googledrive::drive_ls(url)))
-  driveFiles <- driveFiles[nchar(driveFiles$name) == 4, ]
-  driveFiles$Year <- as.numeric(driveFiles$name)
-  
-  years <- sort(unique(driveFiles$Year), decreasing = TRUE)
-  
-  lastYrOnSCANFI <- NULL
-  for (y in years) {
-    id <- driveFiles$id[driveFiles$Year == y]
-    yearURL <- paste0("https://drive.google.com/drive/folders/", id)
-    yearFiles <- as.data.table(googledrive::with_drive_quiet(googledrive::drive_ls(yearURL)))
-    LCC <- yearFiles[grepl("nfiLandCover_CanadaLCCclassCodes", yearFiles$name), ]
-    
-    if (nrow(LCC) > 0) {
-      lastYrOnSCANFI <- LCC
-      lastYrOnSCANFI$year <- y
-      break
-    }
-  }
-  
-  if (is.null(lastYrOnSCANFI)) {
-    message("No data for any year.")
-  } else {
-    message("Using year: ", unique(lastYrOnSCANFI$year))
-    lastYrOnSCANFI <- regmatches(lastYrOnSCANFI$name, regexpr("\\d{4}", lastYrOnSCANFI$name))
-  }
-  
-  as.numeric(lastYrOnSCANFI)
 }
