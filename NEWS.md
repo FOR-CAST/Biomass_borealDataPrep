@@ -1,5 +1,17 @@
 Known issues: <https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues>
 
+development version (FOR-CAST fork)
+===================
+
+## bug fixes
+* With `adjustAgeAndLongevity = TRUE`, cohort ages are now adjusted to the adjusted species longevity
+  in every run. `createBiomass_coreInputs()` adjusted them after building `pixelCohortData`, but the
+  `LCCClassesToReplaceNN` block then rebuilt `pixelCohortData` from `pixelTable` without adjusting it
+  again, so any run replacing a class (e.g. 240) simulated unadjusted ages against the adjusted
+  longevities in `sim$species`. The rebuild now re-applies the adjustment; a static test pins that
+  every build is adjusted before its biomass is partitioned. (PredictiveEcology#116, open, removes the
+  rebuild altogether.)
+
 version 1.5.15
 =============
 

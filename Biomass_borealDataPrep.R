@@ -866,6 +866,15 @@ createBiomass_coreInputs <- function(sim) {
     ) |>
       Cache(userTags = c(cacheTags, "pixelCohortData"), omitArgs = c("userTags"))
     assertCohortDataAttr(pixelCohortData)
+    ## this rebuild starts again from `pixelTable`, so it discards the age adjustment applied after
+    ## the first build while `sim$species` keeps the adjusted longevities; re-apply it with those
+    if (P(sim)$adjustAgeAndLongevity) {
+      pixelCohortData <- adjustAgeToLongevity(
+        pixelCohortData = pixelCohortData,
+        longevity = longevityDT,
+        adjustmentFactor = 0.9
+      )
+    }
     pixelCohortData <- partitionBiomass(x = P(sim)$deciduousCoverDiscount, pixelCohortData) |> Cache()
     set(pixelCohortData, NULL, "B", asInteger(pixelCohortData$B / P(sim)$pixelGroupBiomassClass) *
           P(sim)$pixelGroupBiomassClass)
