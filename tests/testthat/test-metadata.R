@@ -26,7 +26,10 @@ test_that("inputs are the expected names and classes", {
       rasterToMatch              = "SpatRaster",
       rasterToMatch_biomassParam = "SpatRaster",
       rawBiomassMap              = "SpatRaster",
+      rstCanopyClosure           = "SpatRaster",
+      rstCanopyHeight            = "SpatRaster",
       rstLCC                     = "SpatRaster",
+      rstWetland                 = "SpatRaster",
       speciesLayers              = "SpatRaster",
       speciesTable               = "data.table",
       sppColorVect               = "character",
@@ -70,15 +73,17 @@ test_that("parameters are the expected names", {
     sort(c(".plotInitialTime", ".plotInterval", ".plots", ".saveInitialTime",
            ".saveInterval", ".seed", ".sslVerify", ".studyAreaName", ".useCache",
            ".useCacheArgs", ".useCloud", "adjustAgeAndLongevity", "biomassModel",
-           "coverModel", "coverPctToBiomassPctModel", "dataSource", "dataYear",
-           "deciduousCoverDiscount", "earliestFireYear", "ecoregionLayerField",
-           "exportModels", "fitDeciduousCoverDiscount", "fixModelBiomass",
+           "coverModel", "dataSource", "dataYear",
+           "deciduousCoverWeight", "earliestFireYear", "ecoregionLayerField",
+           "exportModels", "fitDeciduousCoverWeight", "fixModelBiomass",
            "forestedLCCClasses", "imputeBadAgeModel", "landis", "LCCClassesToReplaceNN",
            "LCCClassesToReplaceNNMethod", "minCoverThreshold", "minRelativeBFunction",
            "omitNonTreedPixels", "overrideAgeInFires", "overrideBiomassInFires",
            "pixelGroupAgeClass", "pixelGroupBiomassClass", "rmImputedPix",
-           "speciesTableAreas", "speciesUpdateFunction", "sppEquivCol",
+           "speciesTableAreas", "speciesUpdateFunction", "sppEquivCol", "stratumMinPixels",
+           "stratumType",
            "subsetDataAgeModel", "subsetDataAttempts", "subsetDataBiomassModel",
-           "successionTimestep", "useCloudCacheForStats", "vegLeadingProportion"))
+           "successionTimestep", "useCloudCacheForStats", "vegLeadingProportion",
+           "floorMaxBAtObserved", "wetlandSource"))
   )
 })
