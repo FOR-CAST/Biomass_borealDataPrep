@@ -3,12 +3,27 @@ Known issues: <https://github.com/PredictiveEcology/Biomass_borealDataPrep/issue
 development version (FOR-CAST fork)
 ===================
 
-* Merged `PredictiveEcology/Biomass_borealDataPrep@development` (through 1.7.1).
+* Merged `PredictiveEcology/Biomass_borealDataPrep@development` (through 1.7.1.9001).
 * The fork's `adjustAgeAndLongevity` fix is **superseded and removed**. It re-applied the age
   adjustment inside the `LCCClassesToReplaceNN` block, which used to rebuild `pixelCohortData`
   from `pixelTable` and so discard the first adjustment. Upstream (PredictiveEcology#116) removed
   that second rebuild entirely, so there is now a single `makeAndCleanInitialCohortData()` call and
   nothing left to re-apply; keeping the fork's version would have double-adjusted ages.
+* `reqdPkgs` still leaves out `SpaDES.project`, which upstream lists: this fork never fetches
+  modules (Biomass_core is the pinned project copy), so nothing here uses it.
+
+version 1.7.1.9001
+
+* **`imputeBadAgeModel` now defaults to `LandR::imputeBadAgeModelDefault()`** instead of
+  duplicating the formula here. The old default fit age directly, so `predict()` could return a
+  negative value for a young, high-cover, low-biomass stand; that got clamped to age 0 while
+  biomass/cover stayed positive, which `CBMutils::cumPoolsCreateAGB()` rejects (#131). The new
+  default fits `log(age)`, so an imputed age can no longer be negative. Requires
+  `LandR@development (>= 1.2.0.9043)`.
+
+version 1.7.1.9000
+
+* `reqdPkgs` now lists `crayon`, `curl`, `httr`, `lme4`, `Require` and `tidyterra`, which the module's code uses.
 
 version 1.7.1
 
