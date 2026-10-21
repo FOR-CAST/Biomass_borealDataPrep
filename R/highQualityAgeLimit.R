@@ -4,7 +4,9 @@
 ## With `overrideAgeInFires`, ages up to `dataYear - earliestFireYear` are the ones the fire database
 ## can date (time since the last fire), so they are kept to the year. This does not depend on
 ## `overrideBiomassInFires`. It once did: with the biomass re-estimate off, rounding to 20-year
-## classes turned ages 1-9 into 0, and Biomass_core never ages or grows an age-0 cohort.
+## classes turned ages 1-9 into 0. Biomass_core adds no year to an age-0 cohort, so those stands
+## stayed at 0 until its first age reclassification, `successionTimestep` years in, set them to
+## `successionTimestep + 1`.
 ## A `dataYear` before `earliestFireYear` leaves no fire-dated ages, so -1.
 highQualityAgeLimit <- function(overrideAgeInFires, dataYear, earliestFireYear) {
   if (!isTRUE(overrideAgeInFires)) {

@@ -1,7 +1,7 @@
 ## Ages the fire database can date are kept exact by makeCohortDataFiles(), whatever
 ## overrideBiomassInFires is. The limit used to be set only inside the overrideBiomassInFires block,
 ## so with the biomass re-estimate off every age was rounded to pixelGroupAgeClass, and ages 1-9
-## became 0, which Biomass_core never ages or grows.
+## became 0, an age Biomass_core does not advance until its first age reclassification.
 
 moduleBody <- function(name) {
   exprs <- parse(testthat::test_path("..", "..", "Biomass_borealDataPrep.R"), keep.source = FALSE)
