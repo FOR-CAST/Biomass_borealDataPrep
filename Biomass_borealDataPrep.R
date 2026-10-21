@@ -413,7 +413,8 @@ defineModule(sim, list(
                    "Optional stand age map used only as the age covariate of `P(sim)$biomassModel`, the fit that",
                    "gives `maxB` and `maxANPP`; the cohorts' ages, `cohortData` and everything else keep",
                    "`standAgeMap`. It lets the fit use the age product made with `rawBiomassMap` (e.g. SCANFI's)",
-                   "while the cohorts start from another stand age. On the grid of `rasterToMatch_biomassParam`",
+                   "while the cohorts start from another stand age. `sim$modelBiomass` is then this fit, and a",
+                   "cohort with no `B` is filled from it using its own age. On the grid of `rasterToMatch_biomassParam`",
                    "(it is postProcessed to it otherwise). Cohorts whose pixel has no age, or age 0, in it are",
                    "left out of the fit. Not supplied (the default): the fit uses `standAgeMap`."
                  ),
