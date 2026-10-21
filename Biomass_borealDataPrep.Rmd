@@ -538,6 +538,11 @@ log-age (the log of species longevity). When using *Biomass_speciesParameters*,
 during the simulation (see [Calibrating species growth/mortality traits using
 *Biomass_speciesParameters*](#bboreal-B_sppParams-calib)).
 
+The age covariate of this model is each cohort's age from `standAgeMap`, unless the optional input `standAgeMapForMaxB` is supplied.
+The model is then fitted with that layer's age instead, and nothing else uses it: cohort ages, `cohortData` and the strata keep `standAgeMap`.
+This lets the fit use the age product made with the biomass map whose values it fits (for SCANFI, its own stand age) when the cohorts start from another stand age.
+Cohorts with no age, or age 0, in `standAgeMapForMaxB` are left out of the fit.
+
 `maxANPP` is the calculated as `maxB * mANPPproportion/100`, where
 `mANPPproportion` defaults to 3.33, unless calibrated by
 *Biomass_speciesParameters* (see [Calibrating species growth/mortality traits

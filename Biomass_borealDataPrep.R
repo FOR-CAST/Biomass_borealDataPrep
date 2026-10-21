@@ -10,7 +10,7 @@ defineModule(sim, list(
     person(c("Alex", "M."), "Chubaty", email = "achubaty@for-cast.ca", role = c("aut"))
   ),
   childModules = character(0),
-  version = list(Biomass_borealDataPrep = "1.8.0.9004"),
+  version = list(Biomass_borealDataPrep = "1.8.0.9005"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
@@ -408,6 +408,16 @@ defineModule(sim, list(
                    "SCANFI-derived biomass map from 2020, unless `dataYear != 2020`.",
                    "See <https://open.canada.ca/data/en/dataset/18e6a919-53fd-41ce-b4e2-44a9707c52dc> for metadata."
                  )),
+    expectsInput("standAgeMapForMaxB", "SpatRaster",
+                 paste(
+                   "Optional stand age map used only as the age covariate of `P(sim)$biomassModel`, the fit that",
+                   "gives `maxB` and `maxANPP`; the cohorts' ages, `cohortData` and everything else keep",
+                   "`standAgeMap`. It lets the fit use the age product made with `rawBiomassMap` (e.g. SCANFI's)",
+                   "while the cohorts start from another stand age. On the grid of `rasterToMatch_biomassParam`",
+                   "(it is postProcessed to it otherwise). Cohorts whose pixel has no age, or age 0, in it are",
+                   "left out of the fit. Not supplied (the default): the fit uses `standAgeMap`."
+                 ),
+                 sourceURL = NA),
     expectsInput("studyArea", "sf",
                  desc = paste("`sf` polygon or terra `SpatVector` to use as the study area - `nrow` must be one")),
     expectsInput("studyArea_biomassParam", "sf",
@@ -563,7 +573,18 @@ createBiomass_coreInputs <- function(sim) {
       Cache(.functionName = "postProcessStandAgeMap")
     attr(sim$standAgeMap, "imputedPixID") <- sim$imputedPixID
   }
-  
+  ## the age covariate of the maxB fit, if supplied, is read cell by cell on this grid
+  if (!is.null(sim$standAgeMapForMaxB) &&
+      !.compareRas(sim$standAgeMapForMaxB, sim$rasterToMatch_biomassParam, res = TRUE,
+                   stopOnError = FALSE)) {
+    sim$standAgeMapForMaxB <- postProcess(
+      sim$standAgeMapForMaxB,
+      to = sim$rasterToMatch_biomassParam,
+      overwrite = TRUE
+    ) |>
+      Cache(.functionName = "postProcessStandAgeMapForMaxB")
+  }
+
   if (!.compareRas(sim$rstLCC, sim$rasterToMatch_biomassParam, res = TRUE)) {
     sim$rstLCC <- postProcess(sim$rstLCC, to = sim$rasterToMatch_biomassParam, overwrite = TRUE) |>
       Cache(.functionName = "postProcessRstLCC")
@@ -1027,7 +1048,23 @@ createBiomass_coreInputs <- function(sim) {
   cohortDataOnlyForestLCCBiomass <- cohortDataOnlyForestLCC[eval(rmZeroBiomassQuote),
                                                             .(B, logAge, speciesCode, ecoregionGroup, lcc, cover)]
   cohortDataOnlyForestLCCBiomass <- unique(cohortDataOnlyForestLCCBiomass)
-  
+
+  ## The rows biomassModel (maxB, maxANPP) is fitted on. With standAgeMapForMaxB their age comes
+  ## from that layer, and nothing else uses it; see R/maxBAgeCovariate.R. maxBAgeKey keeps a fit on
+  ## another age out of the default fit's cache entry (NULL leaves the default key as it was).
+  if (is.null(sim$standAgeMapForMaxB)) {
+    biomassModelData <- cohortDataOnlyForestLCCBiomass
+    maxBAgeKey <- NULL
+  } else {
+    biomassModelData <- maxBModelData(cohortDataOnlyForestLCC[eval(rmZeroBiomassQuote)],
+                                      ageMap = sim$standAgeMapForMaxB)
+    maxBAgeKey <- c(standAgeMapForMaxB = sum(biomassModelData$logAge))
+    message(cli::col_blue(
+      "  maxB and maxANPP are fitted with the age in standAgeMapForMaxB; ",
+      attr(biomassModelData, "nDropped"), " cohorts with no age, or age 0, in it are left out of the fit"
+    ))
+  }
+
   ## make sure ecoregionGroups match
   ## remember to match rmZeroBiomassQuote the rule used to filter `availableCombinations` (NULL if none)
   if (length(P(sim)$LCCClassesToReplaceNN)) {
@@ -1135,7 +1172,7 @@ createBiomass_coreInputs <- function(sim) {
   
   ## For biomass
   ### Subsample cases where there are more than 50 points in an ecoregionGroup * speciesCode
-  totalBiomass <- sum(cohortDataOnlyForestLCCBiomass$B, na.rm = TRUE)
+  totalBiomass <- sum(biomassModelData$B, na.rm = TRUE)
   
   ## There are several reasons why the modelBiomass can fail;
   ##   1) inappropriate sub-sample
@@ -1146,7 +1183,7 @@ createBiomass_coreInputs <- function(sim) {
   maxDataSubsetTries <- ifelse(isTRUE(P(sim)$subsetDataBiomassModel > 0),
                                P(sim)$subsetDataAttempts, 1)
   for (tryBiomassDataSubset in 1:maxDataSubsetTries) {
-    cohortDataOnlyForestLCCBiomassSubset <- subsetDT(cohortDataOnlyForestLCCBiomass,
+    cohortDataOnlyForestLCCBiomassSubset <- subsetDT(biomassModelData,
                                                      by = c("ecoregionGroup", "speciesCode"),
                                                      doSubset = P(sim)$subsetDataBiomassModel)
     
@@ -1164,7 +1201,7 @@ createBiomass_coreInputs <- function(sim) {
     ueg <- .sortDotsUnderscoreFirst(as.character(unique(cohortDataOnlyForestLCCBiomassSubset$ecoregionGroup)))
     specDat <- cohortDataOnlyForestLCCBiomassSubset
     modelFn <- P(sim)$biomassModel
-    sumResponse <- c(totalBiomass)
+    sumResponse <- c(totalBiomass, maxBAgeKey)
     
     fixModelBiomass <- P(sim)$fixModelBiomass
     timePriorToFit <- Sys.time()
@@ -1235,7 +1272,7 @@ createBiomass_coreInputs <- function(sim) {
                               paste(c(if (needRescaleModelB) "rescaled",
                                       if (tryControl) "control"), collapse = "_"))
         modelFn <- str2lang(modCallChar)
-        sumResponse <- c(totalBiomass, tryControl, needRescaleModelB)
+        sumResponse <- c(totalBiomass, tryControl, needRescaleModelB, maxBAgeKey)
         
         ## break out of while, even after trying to rescale and fit with bobyqa
         if (needRescaleModelB & tryControl) {
@@ -1280,7 +1317,19 @@ createBiomass_coreInputs <- function(sim) {
   ## cohortDataOnlyForestLCCBiomassSubset ends up determining which ecoregion combinations end up in
   ## species ecoregion, thus removing converted/masked classes present cohortDataShortNoCover
   message(cli::col_blue("Create speciesEcoregion using modelCover and modelBiomass to estimate species traits"))
-  speciesEcoregion <- makeSpeciesEcoregion(cohortDataBiomass = cohortDataOnlyForestLCCBiomassSubset,
+  ## its rows are the species x ecoregionGroup combinations in these rows: with standAgeMapForMaxB,
+  ## those of the default fit (see R/maxBAgeCovariate.R)
+  speciesEcoregionRows <- if (is.null(maxBAgeKey)) {
+    cohortDataOnlyForestLCCBiomassSubset
+  } else {
+    maxBSpeciesEcoregionRows(cohortDataOnlyForestLCCBiomassSubset, cohortDataOnlyForestLCCBiomass)
+  }
+  if (isTRUE(attr(speciesEcoregionRows, "nAdded") > 0)) {
+    message(cli::col_blue("  ", attr(speciesEcoregionRows, "nAdded"), " species x ecoregionGroup ",
+                          "combinations have no age in standAgeMapForMaxB; their maxB is predicted ",
+                          "from the fit's species and ecoregionGroup effects"))
+  }
+  speciesEcoregion <- makeSpeciesEcoregion(cohortDataBiomass = speciesEcoregionRows,
                                            cohortDataShort = cohortDataShort,
                                            cohortDataShortNoCover = cohortDataShortNoCover,
                                            species = sim$species,

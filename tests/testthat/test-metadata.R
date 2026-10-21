@@ -36,6 +36,7 @@ test_that("inputs are the expected names and classes", {
       sppEquiv                   = "data.table",
       sppNameVector              = "character",
       standAgeMap                = "SpatRaster",
+      standAgeMapForMaxB         = "SpatRaster",
       studyArea                  = "sf",
       studyArea_biomassParam     = "sf")
   )
