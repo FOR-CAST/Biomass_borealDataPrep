@@ -109,3 +109,33 @@ test_that("in createBiomass_coreInputs() only the maxB fit reads standAgeMapForM
   expect_length(fm, 1L)
   expect_identical(fm[[1]][[3]], as.name("cohortDataOnlyForestLCCBiomass"))
 })
+
+test_that("without standAgeMapForMaxB the fit keeps its default rows, cache key and speciesEcoregion rows", {
+  bod <- moduleBody("createBiomass_coreInputs")
+
+  ## NULL: the fit's rows are the default ones and nothing is added to its cache key
+  br <- Filter(function(x) is.call(x) && identical(x[[1]], as.name("if")) &&
+                 identical(x[[2]], quote(is.null(sim$standAgeMapForMaxB))), as.list(bod))
+  expect_length(br, 1L)
+  expect_identical(as.list(br[[1]][[3]])[-1L],
+                   list(quote(biomassModelData <- cohortDataOnlyForestLCCBiomass),
+                        quote(maxBAgeKey <- NULL)))
+
+  ## each cache key of the fit ends with maxBAgeKey, which c() drops when it is NULL
+  keys <- Filter(function(x) identical(x[[2]], as.name("sumResponse")), callsTo(bod, "<-"))
+  expect_length(keys, 2L)
+  for (k in keys) {
+    rhs <- k[[3]]
+    expect_identical(rhs[[1]], as.name("c"))
+    expect_identical(rhs[[length(rhs)]], as.name("maxBAgeKey"))
+  }
+  expect_identical(c(1234, NULL), 1234)
+
+  ## speciesEcoregion is made from the fit's subsample, as before the input existed
+  ser <- Filter(function(x) identical(x[[2]], as.name("speciesEcoregionRows")), callsTo(bod, "<-"))
+  expect_length(ser, 1L)
+  rhs <- ser[[1]][[3]]
+  expect_identical(rhs[[2]], quote(is.null(maxBAgeKey)))
+  expect_identical(rhs[[3]][[1]], as.name("{"))
+  expect_identical(as.list(rhs[[3]])[-1L], list(as.name("cohortDataOnlyForestLCCBiomassSubset")))
+})
