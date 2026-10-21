@@ -10,7 +10,7 @@ defineModule(sim, list(
     person(c("Alex", "M."), "Chubaty", email = "achubaty@for-cast.ca", role = c("aut"))
   ),
   childModules = character(0),
-  version = list(Biomass_borealDataPrep = "1.8.0.9005"),
+  version = list(Biomass_borealDataPrep = "1.8.0.9006"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
@@ -23,7 +23,7 @@ defineModule(sim, list(
     "archive", "assertthat", "cli", "crayon", "curl", "data.table", "dplyr", "ggplot2", "httr", "httr2",
     "lme4", "merTools", "plyr", "qs2", "rasterVis", "Require", "sf", "terra", "tidyterra", "googledrive", "quickPlot",
     "reproducible (>= 2.1.0)", "SpaDES.core (>= 2.1.0)", "SpaDES.tools (>= 2.0.0)",
-    "PredictiveEcology/LandR@development (>= 1.2.0.9057)", # makeAndCleanInitialCohortData(minSpeciesEcoregionShare), LandR#264; prepInputsFireYear(latestYear)
+    "PredictiveEcology/LandR@development (>= 1.2.0.9060)", # makeAndCleanInitialCohortData(minSpeciesEcoregionShare), LandR#264; prepInputsFireYear(latestYear); prepInputs_CWIM(destinationPath), LandR#280
     "PredictiveEcology/pemisc@development"
   ),
   parameters = rbind(
@@ -1812,7 +1812,7 @@ Save <- function(sim) {
   ## Wetland (site) layer -----------------------------------------------
   ## SCANFI land cover has no wetland classes; CWIM3A says which ground is wet.
   if (!suppliedElsewhere("rstWetland", sim) && identical(P(sim)$wetlandSource, "CWIM")) {
-    sim$rstWetland <- LandR::prepInputs_CWIM(to = sim$rasterToMatch_biomassParam) |>
+    sim$rstWetland <- LandR::prepInputs_CWIM(to = sim$rasterToMatch_biomassParam, destinationPath = dPath) |>
       Cache(userTags = c("rstWetland", currentModule(sim), P(sim)$.studyAreaName))
   }
 
