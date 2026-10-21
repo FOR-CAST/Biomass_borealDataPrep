@@ -370,6 +370,9 @@ The resulting species biomass is used as the initial biomass values for each spe
 
 If the user does not want to perform this imputation, this step can be bypassed by setting the parameter `P(sim)$overrideBiomassInFires` to `FALSE` or `P(sim)$fireURL` to `NULL` or `NA`.
 
+Whenever `P(sim)$overrideAgeInFires` is `TRUE`, ages up to `dataYear - earliestFireYear`, the ages fire records can date, are kept exact rather than rounded to `P(sim)$pixelGroupAgeClass`, also when the biomass spin-up is skipped.
+Rounding them would put stands younger than half an age class at age 0, which *Biomass_core* never ages or grows.
+
 Also pixels that suffered *any kind* of data imputation (e.g., the age
 corrections detailed in the [previous section](#bboreal-init-B-age)) can be
 excluded from the simulation by setting `P(sim)$rmImputedPix == TRUE`.

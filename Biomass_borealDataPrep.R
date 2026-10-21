@@ -10,7 +10,7 @@ defineModule(sim, list(
     person(c("Alex", "M."), "Chubaty", email = "achubaty@for-cast.ca", role = c("aut"))
   ),
   childModules = character(0),
-  version = list(Biomass_borealDataPrep = "1.8.0.9003"),
+  version = list(Biomass_borealDataPrep = "1.8.0.9004"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
@@ -189,14 +189,18 @@ defineModule(sim, list(
     defineParameter("omitNonTreedPixels", "logical", TRUE, FALSE, TRUE,
                     "Should this module use only treed pixels, as identified by `P(sim)$forestedLCCClasses`?"),
     defineParameter("overrideAgeInFires", "logical", TRUE, NA, NA,
-                    paste("should stand age values inside fire perimeters be replaced with number of years since last fire?")),
+                    paste("should stand age values inside fire perimeters be replaced with number of years since last fire?",
+                          "If `TRUE`, cohort ages up to `dataYear - earliestFireYear`, the ages fire records can date,",
+                          "are also kept exact rather than rounded to `P(sim)$pixelGroupAgeClass`, whatever",
+                          "`P(sim)$overrideBiomassInFires` is.")),
     defineParameter("overrideBiomassInFires", "logical", TRUE, NA, NA,
                     paste("should B values be re-estimated using *Biomass_core* for pixels within the fire perimeters",
                           "for which age was replaced with time since last fire? Ignored if `P(sim)$overrideAgeInFires = FALSE`. ",
                           "See `firePerimeters` input object and `P(sim)$overrideAgeInFires` for further detail.")),
     defineParameter("pixelGroupAgeClass", "numeric", params(sim)$Biomass_borealDataPrep$successionTimestep, NA, NA,
                     paste("When assigning `pixelGroup` membership, this defines the resolution of ages that will be considered",
-                          "'the same pixelGroup', e.g., if it is 10, then 6 and 14 will be the same")),
+                          "'the same pixelGroup', e.g., if it is 10, then 6 and 14 will be the same.",
+                          "With `P(sim)$overrideAgeInFires`, ages up to `dataYear - earliestFireYear` are not rounded.")),
     defineParameter("pixelGroupBiomassClass", "numeric", 100, NA, NA,
                     paste("When assigning `pixelGroup` membership, this defines the resolution of biomass that will be considered",
                           "'the same `pixelGroup`', e.g., if it is 100, then 5160 and 5240 will be the same")),
@@ -1385,14 +1389,21 @@ createBiomass_coreInputs <- function(sim) {
          "    quote(LandR::makeMinRelativeB(pixelCohortData))")
   }
   
-  maxAgeHighQualityData <- -1
-  
+  ## Ages the fire database can date (up to dataYear - earliestFireYear) are kept exact by
+  ## makeCohortDataFiles() below, whether or not their biomass is re-estimated; -1 rounds every
+  ## age to pixelGroupAgeClass. See R/highQualityAgeLimit.R.
+  maxAgeHighQualityData <- highQualityAgeLimit(
+    overrideAgeInFires = P(sim)$overrideAgeInFires,
+    dataYear = P(sim)$dataYear,
+    earliestFireYear = P(sim)$earliestFireYear
+  )
+
   maxRawB <- max(values(sim$rawBiomassMap), na.rm = TRUE) * 100 ## match units in cohortData (t/ha ==> g/m^2)
   # maxRawB <- maxValue(sim$rawBiomassMap) * 100 ## match units in cohortData (t/ha ==> g/m^2)
-  
+
   ## If this module used a fire database to extract better young ages, then we
   ##   can use those high quality younger ages to help with our biomass estimates
-  
+
   if (isTRUE(P(sim)$overrideBiomassInFires)) {
     if (isFALSE(P(sim)$overrideAgeInFires)) {
       message(cli::col_blue("'P(sim)$overrideBiomassInFires' is TRUE but 'P(sim)$overrideAgeInFires' if FALSE."))
@@ -1401,14 +1412,8 @@ createBiomass_coreInputs <- function(sim) {
       message(cli::col_blue("Overriding B values (originally from 'rawBiomassMap') within the fire perimeters",
                             "defined in 'firePerimeters'."))
       message(cli::col_blue("To skip this step, set 'P(sim)$overrideBiomassInFires' to FALSE."))
-      
-      firstFireYear <- P(sim)$earliestFireYear
-      ## this is not necessary when using min(),
-      ## but will be kept in case we use something else in the future
-      maxAgeHighQualityData <- P(sim)$dataYear - firstFireYear
-      ## if maxAgeHighQualityData is lower than 0, it means it's prior to the first fire Year
-      ## or not following calendar year
-      
+
+      ## maxAgeHighQualityData is -1 if dataYear is before earliestFireYear
       if (isTRUE(maxAgeHighQualityData >= 0)) {
         ## identify young in the pixelCohortData
         youngRows <- pixelCohortData$age <= maxAgeHighQualityData
@@ -1476,10 +1481,8 @@ createBiomass_coreInputs <- function(sim) {
           all(inRange(na.omit(young$B), 0, youngBiomassLimit(maxRawB, sim$species$longevity, maxAgeHighQualityData)))
         )
       } else {
-        ## return maxAgeHighQualityData to -1
         message(cli::col_blue("Simulation start year is lower than oldest fire."))
         message(cli::col_blue("B values will NOT be re-estimated inside fire perimeters"))
-        maxAgeHighQualityData <- -1
       }
     }
   }
