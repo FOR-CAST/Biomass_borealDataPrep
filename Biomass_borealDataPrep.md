@@ -38,7 +38,7 @@ always_allow_html: true
 
 
 
-[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/PredictiveEcology/Biomass_borealDataPrep43086685d16c7a0607e58caaae1135f97d0b8219)
+[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrepa8fa416ad03492956d82c9459a94ebeb35fd1ec9)
 
 [![Issues-badge](figures/issuesBadge.png)](https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues)
 
@@ -304,6 +304,9 @@ The resulting species biomass is used as the initial biomass values for each spe
 
 If the user does not want to perform this imputation, this step can be bypassed by setting the parameter `P(sim)$overrideBiomassInFires` to `FALSE` or `P(sim)$fireURL` to `NULL` or `NA`.
 
+Whenever `P(sim)$overrideAgeInFires` is `TRUE`, ages up to `dataYear - earliestFireYear`, the ages fire records can date, are kept exact rather than rounded to `P(sim)$pixelGroupAgeClass`, also when the biomass spin-up is skipped.
+Rounding them would put stands younger than half an age class at age 0, and *Biomass_core* adds no year to an age-0 cohort: it stays at 0 until the first age reclassification, `successionTimestep` years in, sets it to `successionTimestep + 1`.
+
 Also pixels that suffered *any kind* of data imputation (e.g., the age
 corrections detailed in the [previous section](#bboreal-init-B-age)) can be
 excluded from the simulation by setting `P(sim)$rmImputedPix == TRUE`.
@@ -471,6 +474,11 @@ log-age (the log of species longevity). When using *Biomass_speciesParameters*,
 `maxB` is calibrated so that species can achieve the maximum observed biomass
 during the simulation (see [Calibrating species growth/mortality traits using
 *Biomass_speciesParameters*](#bboreal-B_sppParams-calib)).
+
+The age covariate of this model is each cohort's age from `standAgeMap`, unless the optional input `standAgeMapForMaxB` is supplied.
+The model is then fitted with that layer's age instead, and nothing else uses it: cohort ages, `cohortData` and the strata keep `standAgeMap`.
+This lets the fit use the age product made with the biomass map whose values it fits (for SCANFI, its own stand age) when the cohorts start from another stand age.
+Cohorts with no age, or age 0, in `standAgeMapForMaxB` are left out of the fit.
 
 `maxANPP` is the calculated as `maxB * mANPPproportion/100`, where
 `mANPPproportion` defaults to 3.33, unless calibrated by
@@ -895,6 +903,12 @@ and *Biomass_core* manual for further detail about these columns.
    <td style="text-align:left;"> NA </td>
   </tr>
   <tr>
+   <td style="text-align:left;"> standAgeMapForMaxB </td>
+   <td style="text-align:left;"> SpatRaster </td>
+   <td style="text-align:left;"> Optional stand age map used only as the age covariate of `P(sim)$biomassModel`, the fit that gives `maxB` and `maxANPP`; the cohorts' ages, `cohortData` and everything else keep `standAgeMap`. It lets the fit use the age product made with `rawBiomassMap` (e.g. SCANFI's) while the cohorts start from another stand age. `sim$modelBiomass` is then this fit, and a cohort with no `B` is filled from it using its own age. On the grid of `rasterToMatch_biomassParam` (it is postProcessed to it otherwise). Cohorts whose pixel has no age, or age 0, in it are left out of the fit. Not supplied (the default): the fit uses `standAgeMap`. </td>
+   <td style="text-align:left;"> NA </td>
+  </tr>
+  <tr>
    <td style="text-align:left;"> studyArea </td>
    <td style="text-align:left;"> sf </td>
    <td style="text-align:left;"> `sf` polygon or terra `SpatVector` to use as the study area - `nrow` must be one </td>
@@ -1197,7 +1211,7 @@ Of these parameters, the following are particularly important:
    <td style="text-align:left;"> TRUE </td>
    <td style="text-align:left;"> NA </td>
    <td style="text-align:left;"> NA </td>
-   <td style="text-align:left;"> should stand age values inside fire perimeters be replaced with number of years since last fire? </td>
+   <td style="text-align:left;"> should stand age values inside fire perimeters be replaced with number of years since last fire? If `TRUE`, cohort ages up to `dataYear - earliestFireYear`, the ages fire records can date, are also kept exact rather than rounded to `P(sim)$pixelGroupAgeClass`, whatever `P(sim)$overrideBiomassInFires` is. </td>
    <td style="text-align:left;"> TRUE </td>
   </tr>
   <tr>
@@ -1215,7 +1229,7 @@ Of these parameters, the following are particularly important:
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> NA </td>
    <td style="text-align:left;"> NA </td>
-   <td style="text-align:left;"> When assigning `pixelGroup` membership, this defines the resolution of ages that will be considered 'the same pixelGroup', e.g., if it is 10, then 6 and 14 will be the same </td>
+   <td style="text-align:left;"> When assigning `pixelGroup` membership, this defines the resolution of ages that will be considered 'the same pixelGroup', e.g., if it is 10, then 6 and 14 will be the same. With `P(sim)$overrideAgeInFires`, ages up to `dataYear - earliestFireYear` are not rounded. </td>
    <td style="text-align:left;"> TRUE </td>
   </tr>
   <tr>
