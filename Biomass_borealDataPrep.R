@@ -10,7 +10,7 @@ defineModule(sim, list(
     person(c("Alex", "M."), "Chubaty", email = "achubaty@for-cast.ca", role = c("aut"))
   ),
   childModules = character(0),
-  version = list(Biomass_borealDataPrep = "1.8.0.9007"),
+  version = list(Biomass_borealDataPrep = "1.8.0.9008"),
   timeframe = as.POSIXlt(c(NA, NA)),
   timeunit = "year",
   citation = list("citation.bib"),
@@ -416,7 +416,9 @@ defineModule(sim, list(
                    "while the cohorts start from another stand age. `sim$modelBiomass` is then this fit, and a",
                    "cohort with no `B` is filled from it using its own age. On the grid of `rasterToMatch_biomassParam`",
                    "(it is postProcessed to it otherwise). Cohorts whose pixel has no age, or age 0, in it are",
-                   "left out of the fit. Not supplied (the default): the fit uses `standAgeMap`."
+                   "left out of the fit, except in an `ecoregionGroup` where no cohort has an age in it: those",
+                   "cohorts are fitted with their age in `standAgeMap`, under the same rule.",
+                   "Not supplied (the default): the fit uses `standAgeMap`."
                  ),
                  sourceURL = NA),
     expectsInput("studyArea", "sf",
@@ -1058,12 +1060,21 @@ createBiomass_coreInputs <- function(sim) {
     maxBAgeKey <- NULL
   } else {
     biomassModelData <- maxBModelData(cohortDataOnlyForestLCC[eval(rmZeroBiomassQuote)],
-                                      ageMap = sim$standAgeMapForMaxB)
+                                      ageMap = sim$standAgeMapForMaxB,
+                                      fallbackAgeMap = sim$standAgeMap)
     maxBAgeKey <- c(standAgeMapForMaxB = sum(biomassModelData$logAge))
     message(cli::col_blue(
       "  maxB and maxANPP are fitted with the age in standAgeMapForMaxB; ",
-      attr(biomassModelData, "nDropped"), " cohorts with no age, or age 0, in it are left out of the fit"
+      attr(biomassModelData, "nDropped"), " cohorts with no age, or age 0, are left out of the fit"
     ))
+    nFallback <- attr(biomassModelData, "nFallback")
+    if (length(nFallback)) {
+      message(cli::col_blue(
+        "  ", length(nFallback), " ecoregionGroups have no age in standAgeMapForMaxB in any cohort; ",
+        "their cohorts are fitted with the age in standAgeMap: ",
+        paste0(names(nFallback), " (", nFallback, " cohorts)", collapse = ", ")
+      ))
+    }
   }
 
   ## make sure ecoregionGroups match

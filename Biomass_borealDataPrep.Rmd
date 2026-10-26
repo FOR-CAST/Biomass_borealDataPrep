@@ -542,6 +542,7 @@ The age covariate of this model is each cohort's age from `standAgeMap`, unless 
 The model is then fitted with that layer's age instead, and nothing else uses it: cohort ages, `cohortData` and the strata keep `standAgeMap`.
 This lets the fit use the age product made with the biomass map whose values it fits (for SCANFI, its own stand age) when the cohorts start from another stand age.
 Cohorts with no age, or age 0, in `standAgeMapForMaxB` are left out of the fit.
+An `ecoregionGroup` in which no cohort has an age in `standAgeMapForMaxB` is fitted with its cohorts' age in `standAgeMap` instead, under the same rule, because `maxB` cannot be predicted for a group the fit has no data for.
 
 `maxANPP` is the calculated as `maxB * mANPPproportion/100`, where
 `mANPPproportion` defaults to 3.33, unless calibrated by

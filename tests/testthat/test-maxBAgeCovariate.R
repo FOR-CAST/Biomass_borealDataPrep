@@ -23,6 +23,8 @@ callsTo <- function(expr, fn) {
 ## 2 x 3 grid; cell 2 has no age, cell 3 age 0, and cell 4's 0.4 rounds to 0
 ageMap <- terra::rast(nrows = 2, ncols = 3, xmin = 0, xmax = 3, ymin = 0, ymax = 2,
                       crs = "EPSG:3978", vals = c(80, NA, 0, 0.4, 120, 45))
+## the cohorts' own age (standAgeMap), cell by cell; makePixelTable() logs cell 2's 30.4 unrounded
+standAgeMap <- terra::setValues(ageMap, c(100, 30.4, 5, 60, 140, 45))
 cohorts <- data.table(
   pixelIndex = c(1L, 1L, 2L, 3L, 4L, 5L, 6L),
   speciesCode = factor(c("Pice_mar", "Popu_tre", "Pice_mar", "Pice_mar", "Pinu_ban", "Pice_gla", "Pice_mar")),
@@ -37,7 +39,8 @@ cohorts <- data.table(
 default <- unique(cohorts[, .(B, logAge, speciesCode, ecoregionGroup, lcc, cover)])
 
 test_that("maxBModelData() takes logAge from the map and leaves everything else alone", {
-  out <- maxBModelData(cohorts, ageMap)
+  ## 1_220 has no age in the map in any cohort: see the fallback tests below
+  out <- maxBModelData(cohorts, ageMap, standAgeMap)[ecoregionGroup != "1_220"]
   expect_identical(names(out), names(default))
   kept <- cohorts$pixelIndex %in% c(1L, 5L, 6L)
   expect_identical(out$B, cohorts$B[kept])
@@ -46,8 +49,50 @@ test_that("maxBModelData() takes logAge from the map and leaves everything else 
   expect_identical(out$ecoregionGroup, cohorts$ecoregionGroup[kept])
   expect_identical(out$lcc, cohorts$lcc[kept])
   expect_equal(out$logAge, log(c(80, 80, 120, 45)))
-  ## no age (cell 2), age 0 (cell 3), and an age that rounds to 0 (cell 4)
-  expect_identical(attr(out, "nDropped"), 3L)
+})
+
+test_that("maxBModelData() leaves out a cohort with no age in the map where its group has one", {
+  ## each group has an aged cohort: no age (cell 2) and age 0 (cell 4) are left out, though both
+  ## cohorts have an age in standAgeMap; so is cell 4's 0.4, which rounds to 0, in the first map
+  am <- terra::setValues(ageMap, c(80, NA, 25, 0, 120, 45))
+  out <- maxBModelData(cohorts, am, standAgeMap)
+  expect_identical(out$B, cohorts$B[cohorts$pixelIndex %in% c(1L, 3L, 5L, 6L)])
+  expect_equal(out$logAge, log(c(80, 80, 25, 120, 45)))
+  expect_identical(attr(out, "nDropped"), 2L)
+  expect_length(attr(out, "nFallback"), 0L)
+
+  fit <- maxBModelData(cohorts, ageMap, standAgeMap)
+  expect_false(any(fit$speciesCode == "Pinu_ban"))
+  expect_identical(attr(fit, "nDropped"), 1L)
+})
+
+test_that("maxBModelData() fits a group with no age in the map at its cohorts' age in standAgeMap", {
+  out <- maxBModelData(cohorts, ageMap, standAgeMap)
+  fb <- out[ecoregionGroup == "1_220"]
+  expect_identical(fb$B, c(3000, 1000))
+  expect_equal(fb$logAge, log(c(30.4, 5)))
+  expect_identical(as.character(fb$speciesCode), c("Pice_mar", "Pice_mar"))
+  expect_identical(fb$lcc, c(220L, 220L))
+  expect_identical(fb$cover, c(100L, 100L))
+  expect_identical(names(out), names(default))
+  expect_identical(attr(out, "nFallback"), c(`1_220` = 2L))
+
+  ## the same rule there: no age, or age 0, in standAgeMap is left out
+  sam <- terra::setValues(standAgeMap, c(100, 0, 5, 60, 140, 45))
+  out0 <- maxBModelData(cohorts, ageMap, sam)
+  expect_equal(out0[ecoregionGroup == "1_220", logAge], log(5))
+  expect_identical(attr(out0, "nFallback"), c(`1_220` = 1L))
+  expect_identical(attr(out0, "nDropped"), 2L)
+})
+
+test_that("a group with no age in either map is not fitted, and its speciesEcoregion rows stop", {
+  sam <- terra::setValues(standAgeMap, c(100, NA, 0, 60, 140, 45))
+  fit <- maxBModelData(cohorts, ageMap, sam)
+  expect_false(any(fit$ecoregionGroup == "1_220"))
+  expect_identical(attr(fit, "nFallback"), c(`1_220` = 0L))
+  expect_identical(attr(fit, "nDropped"), 3L)
+  expect_error(maxBSpeciesEcoregionRows(fit, default),
+               "neither standAgeMapForMaxB nor standAgeMap has an age .* ecoregionGroup\\(s\\) 1_220")
 })
 
 test_that("maxBModelData() floors logAge as makePixelTable() does and keeps the default's unique()", {
@@ -55,7 +100,7 @@ test_that("maxBModelData() floors logAge as makePixelTable() does and keeps the 
   twins <- data.table::copy(cohorts)[c(5L, 6L)]
   twins[, `:=`(pixelIndex = c(2L, 3L), speciesCode = factor("Pinu_ban"), ecoregionGroup = factor("2_210"),
                B = 4000, cover = 100L, lcc = 210L)]
-  out <- maxBModelData(rbind(cohorts[1L], twins), am)
+  out <- maxBModelData(rbind(cohorts[1L], twins), am, standAgeMap)
   expect_equal(out$logAge, c(log(0.6), log(50)))
   expect_identical(nrow(out), 2L)
 })
@@ -63,17 +108,22 @@ test_that("maxBModelData() floors logAge as makePixelTable() does and keeps the 
 test_that("maxBModelData() refuses a map on a smaller grid than the cohorts' pixelIndex", {
   small <- terra::rast(nrows = 1, ncols = 3, xmin = 0, xmax = 3, ymin = 0, ymax = 1,
                        crs = "EPSG:3978", vals = 50)
-  expect_error(maxBModelData(cohorts, small), "rasterToMatch_biomassParam grid")
+  expect_error(maxBModelData(cohorts, small, standAgeMap), "rasterToMatch_biomassParam grid")
+  ## and so is standAgeMap, read for 1_220 (cells 2 and 3)
+  one <- terra::rast(nrows = 1, ncols = 1, xmin = 0, xmax = 1, ymin = 0, ymax = 1,
+                     crs = "EPSG:3978", vals = 50)
+  expect_error(maxBModelData(cohorts, ageMap, one), "^standAgeMap has 1 cells")
 })
 
 test_that("maxBSpeciesEcoregionRows() keeps the default fit's species x ecoregionGroup rows", {
-  fit <- maxBModelData(cohorts, ageMap)
+  ## no cohort of 1_220 has an age in either map
+  fit <- maxBModelData(cohorts, ageMap, terra::setValues(standAgeMap, c(100, NA, 0, 60, 140, 45)))
   ## nothing missing: the rows come back unchanged
   same <- maxBSpeciesEcoregionRows(default, default)
   expect_identical(same, default)
   expect_identical(attr(same, "nAdded"), 0L)
 
-  ## no cohort of 1_220 has an age in the map, so the fit knows nothing of that group: stop
+  ## so the fit knows nothing of that group: stop
   expect_error(maxBSpeciesEcoregionRows(fit, default), "ecoregionGroup\\(s\\) 1_220")
 
   ## with 1_220 in the fit through another species, its Pice_mar row is added back, and so is
@@ -95,6 +145,10 @@ test_that("in createBiomass_coreInputs() only the maxB fit reads standAgeMapForM
   expect_length(mentions, 2L)
   expect_true(any(vapply(mentions, function(x) length(callsTo(x, "postProcess")) > 0, logical(1))))
   expect_true(any(vapply(mentions, function(x) length(callsTo(x, "maxBModelData")) > 0, logical(1))))
+  ## a group with no age in it falls back to standAgeMap, the cohorts' own age
+  mbd <- callsTo(bod, "maxBModelData")
+  expect_length(mbd, 1L)
+  expect_identical(mbd[[1]]$fallbackAgeMap, quote(sim$standAgeMap))
 
   ## the cohorts are built from standAgeMap
   mpt <- callsTo(bod, "makePixelTable")
