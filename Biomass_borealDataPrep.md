@@ -38,7 +38,7 @@ always_allow_html: true
 
 
 
-[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrep4a4962f07bdbf444e6270013efb84179ddb043bc)
+[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrep1532b4e84af5a4d3839e54fcdc1d6cc64fc13201)
 
 [![Issues-badge](figures/issuesBadge.png)](https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues)
 
@@ -479,6 +479,7 @@ The age covariate of this model is each cohort's age from `standAgeMap`, unless 
 The model is then fitted with that layer's age instead, and nothing else uses it: cohort ages, `cohortData` and the strata keep `standAgeMap`.
 This lets the fit use the age product made with the biomass map whose values it fits (for SCANFI, its own stand age) when the cohorts start from another stand age.
 Cohorts with no age, or age 0, in `standAgeMapForMaxB` are left out of the fit.
+An `ecoregionGroup` in which no cohort has an age in `standAgeMapForMaxB` is fitted with its cohorts' age in `standAgeMap` instead, under the same rule, because `maxB` cannot be predicted for a group the fit has no data for.
 
 `maxANPP` is the calculated as `maxB * mANPPproportion/100`, where
 `mANPPproportion` defaults to 3.33, unless calibrated by
@@ -905,7 +906,7 @@ and *Biomass_core* manual for further detail about these columns.
   <tr>
    <td style="text-align:left;"> standAgeMapForMaxB </td>
    <td style="text-align:left;"> SpatRaster </td>
-   <td style="text-align:left;"> Optional stand age map used only as the age covariate of `P(sim)$biomassModel`, the fit that gives `maxB` and `maxANPP`; the cohorts' ages, `cohortData` and everything else keep `standAgeMap`. It lets the fit use the age product made with `rawBiomassMap` (e.g. SCANFI's) while the cohorts start from another stand age. `sim$modelBiomass` is then this fit, and a cohort with no `B` is filled from it using its own age. On the grid of `rasterToMatch_biomassParam` (it is postProcessed to it otherwise). Cohorts whose pixel has no age, or age 0, in it are left out of the fit. Not supplied (the default): the fit uses `standAgeMap`. </td>
+   <td style="text-align:left;"> Optional stand age map used only as the age covariate of `P(sim)$biomassModel`, the fit that gives `maxB` and `maxANPP`; the cohorts' ages, `cohortData` and everything else keep `standAgeMap`. It lets the fit use the age product made with `rawBiomassMap` (e.g. SCANFI's) while the cohorts start from another stand age. `sim$modelBiomass` is then this fit, and a cohort with no `B` is filled from it using its own age. On the grid of `rasterToMatch_biomassParam` (it is postProcessed to it otherwise). Cohorts whose pixel has no age, or age 0, in it are left out of the fit, except in an `ecoregionGroup` where no cohort has an age in it: those cohorts are fitted with their age in `standAgeMap`, under the same rule. Not supplied (the default): the fit uses `standAgeMap`. </td>
    <td style="text-align:left;"> NA </td>
   </tr>
   <tr>
