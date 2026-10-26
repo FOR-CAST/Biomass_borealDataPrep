@@ -1,6 +1,6 @@
 ---
 title: "LandR _Biomass_borealDataPrep_ Manual"
-date: "Last updated: 2026-10-21"
+date: "Last updated: 2026-10-26"
 output:
   bookdown::html_document2:
     toc: true
@@ -38,7 +38,7 @@ always_allow_html: true
 
 
 
-[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrepa8fa416ad03492956d82c9459a94ebeb35fd1ec9)
+[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrep4a4962f07bdbf444e6270013efb84179ddb043bc)
 
 [![Issues-badge](figures/issuesBadge.png)](https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues)
 
