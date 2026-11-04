@@ -2,6 +2,8 @@ Known issues: <https://github.com/PredictiveEcology/Biomass_borealDataPrep/issue
 
 # Biomass_borealDataPrep (development version)
 
+* The spin-up that re-estimates biomass of young cohorts inside fire perimeters now leaves out cohorts whose `speciesCode` x `ecoregionGroup` has no `speciesEcoregion` row (zero-biomass or imputed pixels), and says how many. Biomass_core (>= PR #124) stops on such cohorts, which stopped data preparation (ELF 14.1); before, it dropped them silently. They get `B = NA` as before and are filled from the biomass model, so results are unchanged.
+
 * With `standAgeMapForMaxB`, an `ecoregionGroup` in which no cohort has an age in that map is now fitted with its cohorts' age in `standAgeMap`, under the same rule (no age, or age 0, is left out). Such a group had no rows in the `maxB` fit, so its `maxB` could not be predicted and the module stopped. ChurchillRiverUpland stopped this way on group 7_990: one pixel with one black spruce cohort, 80 years old in `standAgeMap` and with no SCANFI age. Groups with an age in `standAgeMapForMaxB` are fitted as before; a group with no age in either map still stops.
 
 * The check that no cohort `B` is above the raw biomass map's maximum no longer fails on rounding. A cohort's `B` is rounded half up twice on its way from the map (to whole g/m2, then to `pixelGroupBiomassClass`), but the check rounded the maximum once, half even, to a fixed 100. In NorthernAlbertaUplands the maximum, 329.4970703 t/ha, became a single-species cohort of 33000 g/m2 against a limit of 32900, and the run stopped. The limit is now the maximum rounded the same way as the cohorts, or the maximum itself if that is larger, since young cohorts re-estimated inside fire perimeters are capped there and not rounded.
@@ -22,7 +24,7 @@ Known issues: <https://github.com/PredictiveEcology/Biomass_borealDataPrep/issue
 
 ## FOR-CAST fork
 
-* Merged `PredictiveEcology/Biomass_borealDataPrep@development` (through 1.8.0.9003).
+* Merged `PredictiveEcology/Biomass_borealDataPrep@development` (through 1.8.0.9005).
 * `reqdPkgs` still leaves out `SpaDES.project`, which upstream lists: this fork never fetches
   modules (Biomass_core is the pinned project copy), so nothing here uses it.
 * The fork's earlier `adjustAgeAndLongevity` re-apply is superseded and removed: upstream
