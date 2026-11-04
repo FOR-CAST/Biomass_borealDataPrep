@@ -38,7 +38,7 @@ always_allow_html: true
 
 
 
-[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrepc83fdb31a59e5020f318c241aaf3523cf643ce53)
+[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrep4fd8ca57d5d119163adcec55d6f8341c1fc47562)
 
 [![Issues-badge](figures/issuesBadge.png)](https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues)
 
