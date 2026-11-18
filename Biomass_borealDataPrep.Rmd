@@ -39,73 +39,14 @@ always_allow_html: true
 knitr::opts_chunk$set(echo = TRUE, eval = FALSE, warning = FALSE, 
                       cache = TRUE, cache.rebuild = FALSE, results = "hold", dpi = 300)
 
-## get citation style
-if (!file.exists("citations/ecology-letters.csl")) {
-  dir.create("citations", showWarnings = FALSE)
-  download.file("https://www.zotero.org/styles/ecology-letters?source=1", destfile = "citations/ecology-letters.csl")
-}
-
-library(Require)
-
-Require(c("SpaDES.core", "git2r", "dplyr", "data.table", "kableExtra",
-          "pander", "PredictiveEcology/SpaDES.docs"),
-        upgrade = FALSE, install = FALSE)
+library(SpaDES.core)
+library(dplyr)
+library(data.table)
+library(kableExtra)
+library(pander)
+library(SpaDES.docs)
 ```
 
-```{r badgeFigs-Biomass-borealDataPrep, include = FALSE, eval = TRUE, cache = FALSE}
-dir.create("figures", showWarnings = FALSE)
-
-if (!file.exists("figures/issuesBadge.png")) {
-  download.file(url = "https://img.shields.io/badge/Get%20help-Report%20issues-%3CCOLOR%3E.png",
-                destfile = "figures/issuesBadge.png",
-                mode = 'wb')
-}
-
-modversion <- paste(unlist(moduleMetadata(module = 'Biomass_borealDataPrep', path = '..')$version), collapse = ".")
-download.file(url = paste0("https://img.shields.io/badge/Biomass_borealDataPrep-", paste0("v.%20", modversion),
-                           "-%3CCOLOR%3E.png"),
-              destfile = "figures/moduleVersionBadge.png",
-              mode = 'wb')
-```
-
-```{r moduleBadge-Biomass-borealDataPrep, echo = FALSE, eval = TRUE, cache = FALSE, results = "asis"}
-## try to automatically get the commit URL and the path to the badge image
-modulePath <- if (grepl("Biomass_borealDataPrep$", normPath("."))) {
-  normPath(".")
-} else {
-  modulePath <- grep("Biomass_borealDataPrep$", 
-                     list.files(pattern = "Biomass_borealDataPrep", recursive = TRUE, include.dirs = TRUE),
-                     value = TRUE)
-  modulePath <- grep("docs/", modulePath, value = TRUE, invert = TRUE)  ## exclude "copied" modules dirs for bookdown
-  normPath(modulePath)
-}
-
-badgeURL <- if (!is_detached(modulePath)) {
-  commitSHA <- sha(revparse_single(modulePath, "HEAD"))
-  repo <- sub("[.]git$", "/commit/",
-              branch_remote_url(branch_get_upstream(repository_head(modulePath))))
-  paste0(repo, commitSHA)
-} else {
-  ## if detached point to the first remote
-  remote_url(modulePath)[1]
-}
-badgeURL <- sub(".*github[.]com:", "https://github.com/", badgeURL)
-
-badgePath <- SpaDES.docs::stageFigure("figures/moduleVersionBadge.png")
-
-## make string of markdown code to be executed as-is
-cat(paste0("[![module-version-Badge](", badgePath, ")](", badgeURL, ")"))
-```
-
-```{r issuesBadge-Biomass-borealDataPrep, echo = FALSE, eval = TRUE, cache = FALSE, results = "asis"}
-badgeURL <- "https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues"
-badgePath <- SpaDES.docs::stageFigure("figures/issuesBadge.png")
-
-## make string of markdown code to be executed as-is
-cat(paste0("[![Issues-badge](", badgePath, ")](", badgeURL,")"))
-```
-
-<!-- if knitting to pdf remember to add the pandoc_args: ["--extract-media", "."] option to yml in order to get the badge images -->
 
 #### Authors:
 
@@ -262,7 +203,7 @@ layer versions `studyArea_biomassParam` and `studyArea` (`rasterToMatch_biomassP
 
 *Biomass_borealDataPrep* uses land-cover data to define and assign parameter
 values to the pixels where forest dynamics will be simulated (forested pixels).
-By default it uses land-cover classes derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023, @Guindon2024], a raster-based database that distinguishes several forest and non-forest land-cover types.
+By default it uses land-cover classes derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023; @Guindon2024], a raster-based database that distinguishes several forest and non-forest land-cover types.
 The original SCANFI LCC codes are substituted with their corresponding values according to the National Terrestrial Ecosystem Monitoring System for Canada Land Cover [`NTEMS`; @Hermosilla2022] classification.
 Pixels with classes 81, 210, 220, 230, and 240 are included as forested pixels (see parameter `forestedLCCClasses`).
 
@@ -293,13 +234,13 @@ ensures that:
     `rasterToMatch_biomassParam`;
 3.  species with no cover values above 10(ref:percent) are excluded.
 
-By default it uses species (ref:percent) cover rasters derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023, @Guindon2024] -- hereafter 'SCANFI species data'.
+By default it uses species (ref:percent) cover rasters derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023; @Guindon2024] -- hereafter 'SCANFI species data'.
 
 #### Initial species age and biomass per pixel {#bboreal-init-B-age}
 
 Stand age and aboveground stand biomass (hereafter 'stand biomass') are used to derive parameters and define initial species age and biomass across the
 landscape.
-These are also derived from SCANFI [@Guindon2023, @Guindon2024] by default.
+These are also derived from SCANFI [@Guindon2023; @Guindon2024] by default.
 
 *Biomass_borealDataPrep* downloads these data and performs a number of data
 harmonization operations to deal with data inconsistencies.
