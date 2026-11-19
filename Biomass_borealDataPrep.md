@@ -37,6 +37,12 @@ always_allow_html: true
 
 
 
+
+[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrep213e6a6fcc38de179f1591b1fcd49bb0f85a925a)
+
+[![Issues-badge](figures/issuesBadge.png)](https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues)
+
+
 #### Authors:
 
 Yong Luo <Yong.Luo@gov.bc.ca> [aut], Eliot J B McIntire <eliot.mcintire@nrcan-rncan.gc.ca> [aut, cre], Ceres Barros <ceres.barros@ubc.ca> [aut], Alex M. Chubaty <achubaty@for-cast.ca> [aut]
