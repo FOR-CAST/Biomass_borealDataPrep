@@ -1,6 +1,6 @@
 ---
 title: "LandR _Biomass_borealDataPrep_ Manual"
-date: "Last updated: 2026-11-04"
+date: "Last updated: 2026-11-19"
 output:
   bookdown::html_document2:
     toc: true
@@ -36,13 +36,6 @@ always_allow_html: true
 
 
 
-
-
-[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrep4fd8ca57d5d119163adcec55d6f8341c1fc47562)
-
-[![Issues-badge](figures/issuesBadge.png)](https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues)
-
-<!-- if knitting to pdf remember to add the pandoc_args: ["--extract-media", "."] option to yml in order to get the badge images -->
 
 #### Authors:
 
@@ -199,7 +192,7 @@ layer versions `studyArea_biomassParam` and `studyArea` (`rasterToMatch_biomassP
 
 *Biomass_borealDataPrep* uses land-cover data to define and assign parameter
 values to the pixels where forest dynamics will be simulated (forested pixels).
-By default it uses land-cover classes derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023, @Guindon2024], a raster-based database that distinguishes several forest and non-forest land-cover types.
+By default it uses land-cover classes derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023; @Guindon2024], a raster-based database that distinguishes several forest and non-forest land-cover types.
 The original SCANFI LCC codes are substituted with their corresponding values according to the National Terrestrial Ecosystem Monitoring System for Canada Land Cover [`NTEMS`; @Hermosilla2022] classification.
 Pixels with classes 81, 210, 220, 230, and 240 are included as forested pixels (see parameter `forestedLCCClasses`).
 
@@ -230,13 +223,13 @@ ensures that:
     `rasterToMatch_biomassParam`;
 3.  species with no cover values above 10(ref:percent) are excluded.
 
-By default it uses species (ref:percent) cover rasters derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023, @Guindon2024] -- hereafter 'SCANFI species data'.
+By default it uses species (ref:percent) cover rasters derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023; @Guindon2024] -- hereafter 'SCANFI species data'.
 
 #### Initial species age and biomass per pixel {#bboreal-init-B-age}
 
 Stand age and aboveground stand biomass (hereafter 'stand biomass') are used to derive parameters and define initial species age and biomass across the
 landscape.
-These are also derived from SCANFI [@Guindon2023, @Guindon2024] by default.
+These are also derived from SCANFI [@Guindon2023; @Guindon2024] by default.
 
 *Biomass_borealDataPrep* downloads these data and performs a number of data
 harmonization operations to deal with data inconsistencies.
