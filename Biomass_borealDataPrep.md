@@ -1,6 +1,6 @@
 ---
 title: "LandR _Biomass_borealDataPrep_ Manual"
-date: "Last updated: 2026-11-23"
+date: "Last updated: 2026-11-24"
 output:
   bookdown::html_document2:
     toc: true
@@ -38,10 +38,11 @@ always_allow_html: true
 
 
 
-[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/FOR-CAST/Biomass_borealDataPrep/commit/9a11a96a6932409430472bc3d2a36b412f7f5060)
+[![module-version-Badge](figures/moduleVersionBadge.png)](https://github.com/PredictiveEcology/Biomass_borealDataPrep43c77a83f025175659b3c28d5bf4fa8efd8f8e7c)
 
 [![Issues-badge](figures/issuesBadge.png)](https://github.com/PredictiveEcology/Biomass_borealDataPrep/issues)
 
+<!-- if knitting to pdf remember to add the pandoc_args: ["--extract-media", "."] option to yml in order to get the badge images -->
 
 #### Authors:
 
@@ -198,7 +199,7 @@ layer versions `studyArea_biomassParam` and `studyArea` (`rasterToMatch_biomassP
 
 *Biomass_borealDataPrep* uses land-cover data to define and assign parameter
 values to the pixels where forest dynamics will be simulated (forested pixels).
-By default it uses land-cover classes derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023; @Guindon2024], a raster-based database that distinguishes several forest and non-forest land-cover types.
+By default it uses land-cover classes derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023, @Guindon2024], a raster-based database that distinguishes several forest and non-forest land-cover types.
 The original SCANFI LCC codes are substituted with their corresponding values according to the National Terrestrial Ecosystem Monitoring System for Canada Land Cover [`NTEMS`; @Hermosilla2022] classification.
 Pixels with classes 81, 210, 220, 230, and 240 are included as forested pixels (see parameter `forestedLCCClasses`).
 
@@ -229,13 +230,13 @@ ensures that:
     `rasterToMatch_biomassParam`;
 3.  species with no cover values above 10(ref:percent) are excluded.
 
-By default it uses species (ref:percent) cover rasters derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023; @Guindon2024] -- hereafter 'SCANFI species data'.
+By default it uses species (ref:percent) cover rasters derived from the Spatialized Canadian National Forest Inventory [`SCANFI`; @Guindon2023, @Guindon2024] -- hereafter 'SCANFI species data'.
 
 #### Initial species age and biomass per pixel {#bboreal-init-B-age}
 
 Stand age and aboveground stand biomass (hereafter 'stand biomass') are used to derive parameters and define initial species age and biomass across the
 landscape.
-These are also derived from SCANFI [@Guindon2023; @Guindon2024] by default.
+These are also derived from SCANFI [@Guindon2023, @Guindon2024] by default.
 
 *Biomass_borealDataPrep* downloads these data and performs a number of data
 harmonization operations to deal with data inconsistencies.
@@ -302,9 +303,6 @@ All specie start with age = 0 and biomass = 0, and grow until time since last fi
 The resulting species biomass is used as the initial biomass values for each species cohort in the actual simulation.
 
 If the user does not want to perform this imputation, this step can be bypassed by setting the parameter `P(sim)$overrideBiomassInFires` to `FALSE` or `P(sim)$fireURL` to `NULL` or `NA`.
-
-Whenever `P(sim)$overrideAgeInFires` is `TRUE`, ages up to `dataYear - earliestFireYear`, the ages fire records can date, are kept exact rather than rounded to `P(sim)$pixelGroupAgeClass`, also when the biomass spin-up is skipped.
-Rounding them would put stands younger than half an age class at age 0, and *Biomass_core* adds no year to an age-0 cohort: it stays at 0 until the first age reclassification, `successionTimestep` years in, sets it to `successionTimestep + 1`.
 
 Also pixels that suffered *any kind* of data imputation (e.g., the age
 corrections detailed in the [previous section](#bboreal-init-B-age)) can be
@@ -473,12 +471,6 @@ log-age (the log of species longevity). When using *Biomass_speciesParameters*,
 `maxB` is calibrated so that species can achieve the maximum observed biomass
 during the simulation (see [Calibrating species growth/mortality traits using
 *Biomass_speciesParameters*](#bboreal-B_sppParams-calib)).
-
-The age covariate of this model is each cohort's age from `standAgeMap`, unless the optional input `standAgeMapForMaxB` is supplied.
-The model is then fitted with that layer's age instead, and nothing else uses it: cohort ages, `cohortData` and the strata keep `standAgeMap`.
-This lets the fit use the age product made with the biomass map whose values it fits (for SCANFI, its own stand age) when the cohorts start from another stand age.
-Cohorts with no age, or age 0, in `standAgeMapForMaxB` are left out of the fit.
-An `ecoregionGroup` in which no cohort has an age in `standAgeMapForMaxB` is fitted with its cohorts' age in `standAgeMap` instead, under the same rule, because `maxB` cannot be predicted for a group the fit has no data for.
 
 `maxANPP` is the calculated as `maxB * mANPPproportion/100`, where
 `mANPPproportion` defaults to 3.33, unless calibrated by
@@ -903,12 +895,6 @@ and *Biomass_core* manual for further detail about these columns.
    <td style="text-align:left;"> NA </td>
   </tr>
   <tr>
-   <td style="text-align:left;"> standAgeMapForMaxB </td>
-   <td style="text-align:left;"> SpatRaster </td>
-   <td style="text-align:left;"> Optional stand age map used only as the age covariate of `P(sim)$biomassModel`, the fit that gives `maxB` and `maxANPP`; the cohorts' ages, `cohortData` and everything else keep `standAgeMap`. It lets the fit use the age product made with `rawBiomassMap` (e.g. SCANFI's) while the cohorts start from another stand age. `sim$modelBiomass` is then this fit, and a cohort with no `B` is filled from it using its own age. On the grid of `rasterToMatch_biomassParam` (it is postProcessed to it otherwise). Cohorts whose pixel has no age, or age 0, in it are left out of the fit, except in an `ecoregionGroup` where no cohort has an age in it: those cohorts are fitted with their age in `standAgeMap`, under the same rule. Not supplied (the default): the fit uses `standAgeMap`. </td>
-   <td style="text-align:left;"> NA </td>
-  </tr>
-  <tr>
    <td style="text-align:left;"> studyArea </td>
    <td style="text-align:left;"> sf </td>
    <td style="text-align:left;"> `sf` polygon or terra `SpatVector` to use as the study area - `nrow` must be one </td>
@@ -1211,7 +1197,7 @@ Of these parameters, the following are particularly important:
    <td style="text-align:left;"> TRUE </td>
    <td style="text-align:left;"> NA </td>
    <td style="text-align:left;"> NA </td>
-   <td style="text-align:left;"> should stand age values inside fire perimeters be replaced with number of years since last fire? If `TRUE`, cohort ages up to `dataYear - earliestFireYear`, the ages fire records can date, are also kept exact rather than rounded to `P(sim)$pixelGroupAgeClass`, whatever `P(sim)$overrideBiomassInFires` is. </td>
+   <td style="text-align:left;"> should stand age values inside fire perimeters be replaced with number of years since last fire? </td>
    <td style="text-align:left;"> TRUE </td>
   </tr>
   <tr>
@@ -1229,7 +1215,7 @@ Of these parameters, the following are particularly important:
    <td style="text-align:left;">  </td>
    <td style="text-align:left;"> NA </td>
    <td style="text-align:left;"> NA </td>
-   <td style="text-align:left;"> When assigning `pixelGroup` membership, this defines the resolution of ages that will be considered 'the same pixelGroup', e.g., if it is 10, then 6 and 14 will be the same. With `P(sim)$overrideAgeInFires`, ages up to `dataYear - earliestFireYear` are not rounded. </td>
+   <td style="text-align:left;"> When assigning `pixelGroup` membership, this defines the resolution of ages that will be considered 'the same pixelGroup', e.g., if it is 10, then 6 and 14 will be the same </td>
    <td style="text-align:left;"> TRUE </td>
   </tr>
   <tr>
@@ -1622,6 +1608,229 @@ when during the run of the `.inputObjects` function]
 10. (OPTIONAL) Plots of `maxB`, `maxANPP` and SEP maps (`plot` event);
 
 11. (OPTIONAL) Save outputs (`save` event)
+
+
+
+<div class="figure">
+<img src="figures/Biomass_borealDataPrep_eventFlow.png" alt="(ref:Biomass-borealDataPrep) events, as read from the module code with its default parameters." width="100%" />
+<p class="caption">(\#fig:eventFlow-Biomass-borealDataPrep)(ref:Biomass-borealDataPrep) events, as read from the module code with its default parameters.</p>
+</div>
+
+Table \@ref(tab:eventObjects-Biomass-borealDataPrep) lists, for each object, the code that writes it and the code that only reads it.
+
+<table class="table" style="width: auto !important; border-bottom: 0;">
+<caption>(\#tab:eventObjects-Biomass-borealDataPrep)Where each object of (ref:Biomass-borealDataPrep) is written and read, in run order.</caption>
+ <thead>
+  <tr>
+   <th style="text-align:left;"> Object </th>
+   <th style="text-align:left;"> Written by </th>
+   <th style="text-align:left;"> Read by </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr grouplength="16"><td colspan="3" style="border-bottom: 1px solid;"><strong>Inputs</strong></td></tr>
+<tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> sppNameVector </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> studyArea_biomassParam </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> cloudFolderID </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> columnsForPixelGroups </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> ecoregionLayer </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> ecoregionRst </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> rasterToMatch </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> rasterToMatch_biomassParam </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> rawBiomassMap </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> rstCanopyClosure </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> rstCanopyHeight </td>
+   <td style="text-align:left;">  </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> rstWetland </td>
+   <td style="text-align:left;"> .inputObjects (default), init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> speciesTable </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> sppColorVect </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> sppEquiv </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> studyArea </td>
+   <td style="text-align:left;"> .inputObjects (default) </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+  </tr>
+  <tr grouplength="5"><td colspan="3" style="border-bottom: 1px solid;"><strong>Inputs the module also updates</strong></td></tr>
+<tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> firePerimeters </td>
+   <td style="text-align:left;"> .inputObjects (default), init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> imputedPixID </td>
+   <td style="text-align:left;"> .inputObjects (default), init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> rstLCC </td>
+   <td style="text-align:left;"> .inputObjects (default), init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> speciesLayers </td>
+   <td style="text-align:left;"> .inputObjects (default), init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;"> init (own code) </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> standAgeMap </td>
+   <td style="text-align:left;"> .inputObjects (default), init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr grouplength="12"><td colspan="3" style="border-bottom: 1px solid;"><strong>Outputs</strong></td></tr>
+<tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> biomassMap </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> cohortData </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> ecoregion </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> ecoregionMap </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;"> init: plottingFn() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> minRelativeB </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> modelBiomass </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> modelCover </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> pixelFateDT </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> pixelGroupMap </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> species </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> speciesEcoregion </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;"> init: plottingFn() </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;padding-left: 2em;" indentlevel="1"> sufficientLight </td>
+   <td style="text-align:left;"> init: createBiomass_coreInputs() </td>
+   <td style="text-align:left;">  </td>
+  </tr>
+</tbody>
+<tfoot><tr><td style="padding: 0; " colspan="100%">
+<sup></sup> Not shown, off with the default parameters: save.</td></tr></tfoot>
+</table>
+
+
+#### .inputObjects {-}
+
+during simInit: defaults for inputs not supplied
+
+![](figures/Biomass_borealDataPrep_io_.inputObjects.png){width=100%}
+
+
+
+#### createBiomass\_coreInputs() {-}
+
+init event, step 1 of 2
+
+![](figures/Biomass_borealDataPrep_io_init_createBiomass_coreInputs.png){width=100%}
+
+
+
+#### plottingFn() {-}
+
+init event, step 2 of 2
+
+![](figures/Biomass_borealDataPrep_io_init_plottingFn.png){width=100%}
+
+
+
+#### init (own code) {-}
+
+the init event's own code, outside the functions it calls
+
+![](figures/Biomass_borealDataPrep_io_init_own.png){width=100%}
 
 ## Usage example {#bboreal-example}
 

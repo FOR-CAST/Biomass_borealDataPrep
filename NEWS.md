@@ -2,6 +2,12 @@ Known issues: <https://github.com/PredictiveEcology/Biomass_borealDataPrep/issue
 
 # Biomass_borealDataPrep (development version)
 
+* The README shows the module's events, the objects each reads and writes, and a figure per event, generated from the code (needs SpaDES.core 3.2.1.9068 or later; older versions leave them out).
+
+# Biomass_borealDataPrep 1.9.0
+
+This release changes how the starting biomass of young stands inside old fire perimeters is estimated. Stand age there is now the time since the latest fire at or before the data year, young cohorts start at a set biomass (new parameter `initialB`) instead of zero, and the right cohorts are picked when the study area is smaller than the area used to estimate parameters. Starting biomass of young cohorts changes in many projects. The national wetland layer is now downloaded into the module's input folder, and two inputs that used to stop data preparation no longer do.
+
 * The spin-up that re-estimates biomass of young cohorts inside fire perimeters now leaves out cohorts whose `speciesCode` x `ecoregionGroup` has no `speciesEcoregion` row (zero-biomass or imputed pixels), and says how many. Biomass_core (>= PR #124) stops on such cohorts, which stopped data preparation (ELF 14.1); before, it dropped them silently. They get `B = NA` as before and are filled from the biomass model, so results are unchanged.
 
 * With `standAgeMapForMaxB`, an `ecoregionGroup` in which no cohort has an age in that map is now fitted with its cohorts' age in `standAgeMap`, under the same rule (no age, or age 0, is left out). Such a group had no rows in the `maxB` fit, so its `maxB` could not be predicted and the module stopped. ChurchillRiverUpland stopped this way on group 7_990: one pixel with one black spruce cohort, 80 years old in `standAgeMap` and with no SCANFI age. Groups with an age in `standAgeMapForMaxB` are fitted as before; a group with no age in either map still stops.
